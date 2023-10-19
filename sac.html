@@ -5,7 +5,10 @@
 		<title>D3: Schmidt-Appleman</title>
 		<script type="text/javascript" src="d3.js"></script>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+        <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">script>
+        <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+        <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
 		<style type="text/css">
             html, body, #main-container {
                 height: 100%;
@@ -19,19 +22,26 @@
             }
 			rect.hover {
                 fill : "orange";
-
-
             }	
 
             .axislabel{
-            font-size:15px;
-            line-height:18px;
-            font-family:Helvetica;
-            font-weight: bold;
+                font-size:15px;
+                line-height:18px;
+                font-family:Helvetica;
+                font-weight: bold;
             }
+
             #main-container {
-            padding-top: 56px; /* Height of the navbar assuming standard navbar height. Adjust if your navbar is of a different height. */
-        }
+                padding-top: 56px; /* Height of the navbar assuming standard navbar height. Adjust if your navbar is of a different height. */
+            }
+            #custom-handle {
+                width: 2em;
+                height: 1.6em;
+                top: 50%;
+                margin-top: -.8em;
+                text-align: center;
+                line-height: 1.6em;
+            }
 
 		</style>
         
@@ -51,7 +61,7 @@
         <div class="container-fluid h-100" id="main-container">
             <div class="row h-100">
                 <!-- Controls column -->
-                <div class="col-md-1" id="controls-col">
+                <div class="col-md-2" id="controls-col">
                     <!-- Place your input elements (like sliders, dropdowns, etc.) here -->
                     <label>Select fuel</label>
                     <select name="fuel" id="fuels" onchange="changeFuel(this)">
@@ -59,14 +69,23 @@
                         <option value="Hydrogen">Hydrogen</option>
                         <option value="SAF">SAF</option>
                     </select>
+                    <p>
+                        <label for="efficiency">Efficiency:</label>
+                        <input type="text" id="efficiency" readonly style="border:0;">
+                    </p>
+                    <div id="efficiencySlider" class="ui-slider-handle"></div>
+                    <p>
+                        <label for="pressure">Pressure (hPa):</label>
+                        <input type="text" id="pressure" readonly style="border:0;">
+                    </p>
+                    <div id="pressureSlider" class="ui-slider-handle"></div>
                 </div>
         
                 <!-- D3 Visualization column -->
-                <div class="col-md-11" id="d3-col">
+                <div class="col-md-10" id="d3-col">
                     <svg>
-                        
+
                     </svg>
-                
                 </div>
             </div>
 
@@ -77,6 +96,38 @@
         
 
 		<script type="text/javascript">
+            var efficiency_value = 40;
+            var pressure_value = 300;
+            $( function() {
+                // var handle = $( "#custom-handle" );
+                $( "#efficiencySlider" ).slider({
+                    min: 1,
+                    max: 99,
+                    value: efficiency_value,
+                    slide: function( event, ui ) {
+   
+                        efficiency_value = ui.value;
+                        $("#efficiency").val(efficiency_value);
+                        eta = efficiency_value / 100;
+                        updateMixingSlope();
+                    }
+                });
+                $("#efficiency").val(efficiency_value);
+
+                $( "#pressureSlider" ).slider({
+                    min: 100,
+                    max: 450,
+                    value: pressure_value,
+                    slide: function( event, ui ) {
+                        pressure_value = ui.value;
+                        $("#pressure").val(pressure_value);
+                        p = pressure_value * 100;
+                        updateMixingSlope();
+                    }
+                });
+                $("#pressure").val(pressure_value);
+            } );
+            
             var fuelData = {"Jet-A" : {"eta" : 0.4, "EI_H2O" : 1.23, "LHV" : 42e6},
                         "SAF" : {"eta" : 0.4, "EI_H2O" : 1.371, "LHV" : 44.17e6},
                         "Hydrogen" : {"eta" : 0.4, "EI_H2O" : 9.0, "LHV" : 120.9e6}}
@@ -91,6 +142,7 @@
             }
             function updateMixingSlope() {
                 slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
+                console.log(slope);
                 updateMixingLine();
             }
             
@@ -305,14 +357,25 @@
 					.on("start", dragStarted)
 					.on("drag", dragging)
 					.on("end", dragEnded));
+
             
             var updateMixingLine = function () {
 
-                mixing_data[0] = {"temperature" : ambient_temperature,
-                                  "pressure" : ambient_pressure_h2o};
-                mixing_data[1] = {"temperature" : 250,
-                                  "pressure" : ambient_pressure_h2o + slope * (250 - ambient_temperature)};
-   
+                slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
+                
+                // mixing_data[0] = {"temperature" : ambient_temperature,
+                //                   "pressure" : ambient_pressure_h2o};
+                mixing_data = [];
+                var localTempValues = d3.range(ambient_temperature, max_temp, 0.1);
+                localTempValues.forEach(
+                    T => { var p_h2o_local = ambient_pressure_h2o + slope * (T - ambient_temperature);
+                            if (p_h2o_local < max_pressure) {
+                                mixing_data.push({"temperature": T, "pressure" : p_h2o_local});
+                            }
+                            
+                        }
+                );
+
                 var SAC = checkSAC();
                 var ISS = checkISS();
                 var color = "black"
@@ -343,9 +406,11 @@
                 svg.selectAll("circle")
                 .attr("fill", color);
 
+                var final_point = mixing_data[mixing_data.length - 1];
+
                 svg.selectAll(".mixing-line-label")
-                .attr("x", xScale(250))
-                .attr("y", yScale(clamp(slope * (250 - ambient_temperature) + ambient_pressure_h2o, min_pressure, max_pressure)))
+                .attr("x", xScale(final_point.temperature))
+                .attr("y", yScale(final_point.pressure))
                 .text(labelText)
                 .attr("fill", color);
 
@@ -515,6 +580,8 @@
                     }
 
                 responsivefy(svg);
+
+       
 
 		</script>
 	</body>
