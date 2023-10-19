@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>D3: Schmidt-Appleman</title>
+		<script type="text/javascript" src="d3.js"></script>
+		<style type="text/css">
+            rect {
+                -moz-transition: all 0.25s;
+                -o-transition: all 0.25s;
+                -webkit-transition: all 0.25s;
+                transition: all 0.25s;
+            }
+			rect.hover {
+                fill : "orange";
+
+
+            }	
+
+            .axislabel{
+            font-size:12px;
+            line-height:18px;
+            font-family:Helvetica;
+            font-weight: bold;
+            }
+		</style>
+	</head>
+	<body>
+        <label>Select fuel</label>
+        <select name="fuel" id="fuels" onchange="changeFuel(this)">
+            <option value="Jet-A">Jet-A</option>
+            <option value="Hydrogen">Hydrogen</option>
+            <option value="SAF">SAF</option>
+        </select>
+        
+        <svg>
+            <path id="XMLID_173_" fill="#000000" d="M-3.2-1.3c0-0.1,0-0.2,0-0.3c0-0.1,0-0.2,0-0.3c-0.6,0-1.2,0-1.8,0c0,0.6,0,1.2,0,1.8
+      c0.2,0,0.4,0,0.6,0c0-0.4,0-0.8,0-1.2c0,0,0.1,0,0.1,0c0.3,0,0.5,0,0.8,0C-3.4-1.3-3.3-1.3-3.2-1.3c0,0.2,0,0.4,0,0.6
+      c0.2,0,0.4,0,0.6,0c0,0.2,0,0.4,0,0.6c0.2,0,0.4,0,0.6,0c0,0,0,0,0-0.1c0-1.6,0-3.2,0-4.8c0-0.6,0-1.2,0-1.8c0,0,0,0,0.1,0
+      c0.3,0,0.7,0,1,0c0.1,0,0.1,0,0.2,0c0-0.2,0-0.4,0-0.6c-0.4,0-0.8,0-1.2,0C-2-7.2-2-7-2-6.8c0,0,0,0-0.1,0c-0.2,0-0.3,0-0.5,0
+      c0,0,0,0-0.1,0c0,1.8,0,3.6,0,5.5c-0.2,0-0.3,0-0.4,0C-3.1-1.3-3.2-1.3-3.2-1.3z M1.1-3.7C1-3.8,1-3.8,1.1-3.7C1-4,1-4.1,1-4.3
+      c0,0,0,0,0-0.1c-0.4,0-0.8,0-1.2,0c0-0.8,0-1.6,0-2.4c-0.2,0-0.4,0-0.6,0c0,1.8,0,3.6,0,5.5c0.2,0,0.4,0,0.6,0c0-0.8,0-1.6,0-2.4
+      c0,0,0.1,0,0.1,0C0.3-3.7,0.6-3.7,1.1-3.7C1-3.7,1-3.7,1.1-3.7C1.1-3.7,1-3.7,1.1-3.7c0,0.8,0,1.6,0,2.3c0,0,0,0.1,0,0.1
+      c0.2,0,0.4,0,0.6,0c0-0.6,0-1.2,0-1.8c0.4,0,0.8,0,1.2,0c0,0.8,0,1.6,0,2.4c0.2,0,0.4,0,0.6,0c0-0.6,0-1.2,0-1.8c0.2,0,0.4,0,0.6,0
+      c0,0,0,0,0,0.1c0,0.1,0,0.3,0,0.4c0,0,0,0.1,0,0.1c0.2,0,0.4,0,0.5,0c0,0,0.1,0,0.1,0.1c0,0.2,0,0.5,0,0.7c0,1.1,0,2.3,0,3.4
+      c0,0,0,0,0,0.1c-0.2,0-0.4,0-0.6,0c0,0,0,0,0,0c0,0.6,0,1.1,0,1.7c0,0,0,0,0,0.1c-0.2,0-0.4,0-0.6,0c0,0.4,0,0.8,0,1.2
+      c-1.6,0-3.2,0-4.9,0c0-0.4,0-0.8,0-1.2c-0.2,0-0.4,0-0.6,0C-2,3.8-2,3.4-2,3c-0.2,0-0.4,0-0.6,0c0,0.4,0,0.8,0,1.2
+      c0.2,0,0.4,0,0.6,0C-2,4.8-2,5.4-2,6c2,0,4.1,0,6.1,0c0-0.1,0-0.2,0-0.3c0-0.5,0-0.9,0-1.4c0-0.1,0-0.1,0-0.2c0.2,0,0.4,0,0.5,0
+      c0.1,0,0.1,0,0.1-0.1c0-0.4,0-0.9,0-1.3c0-0.1,0-0.3,0-0.4c0.1,0,0.2,0,0.3,0c0.1,0,0.2,0,0.3,0c0-1.4,0-2.8,0-4.3
+      c-0.2,0-0.4,0-0.6,0c0-0.2,0-0.4,0-0.6c-0.2,0-0.4,0-0.6,0c0-0.2,0-0.4,0-0.6c-0.4,0-0.8,0-1.2,0c0-0.2,0-0.4,0-0.6
+      c-0.1,0-0.2,0-0.3,0c-0.4,0-0.9,0-1.3,0C1.2-3.7,1.1-3.7,1.1-3.7z M-3.2,1.8c0,0.4,0,0.8,0,1.2c0.2,0,0.4,0,0.5,0
+      c0.1,0,0.1,0,0.1-0.1c0-0.3,0-0.6,0-1c0-0.1,0-0.1,0-0.2C-2.8,1.8-3,1.8-3.2,1.8c0-0.4,0-0.8,0-1.2c-0.2,0-0.4,0-0.6,0
+      c0-0.2,0-0.4,0-0.6c-0.2,0-0.4,0-0.6,0c0,0.2,0,0.4,0,0.6c0.2,0,0.4,0,0.6,0c0,0,0,0,0,0.1c0,0.1,0,0.3,0,0.4c0,0.2,0,0.5,0,0.7
+      c0,0,0,0.1,0.1,0.1c0.1,0,0.2,0,0.3,0C-3.4,1.8-3.3,1.8-3.2,1.8z"></path>
+        </svg>
+		<script type="text/javascript">
+            var fuelData = {"Jet-A" : {"eta" : 0.4, "EI_H2O" : 1.23, "LHV" : 42e6},
+                        "SAF" : {"eta" : 0.4, "EI_H2O" : 1.371, "LHV" : 44.17e6},
+                        "Hydrogen" : {"eta" : 0.4, "EI_H2O" : 9.0, "LHV" : 120.9e6}}
+
+            function changeFuel(object) {
+                selectedFuel = object.value 
+                console.log("Changing selected fuel to " + selectedFuel);
+                eta = fuelData[selectedFuel].eta;
+                EI_H2O = fuelData[selectedFuel].EI_H2O;
+                LHV = fuelData[selectedFuel].LHV;
+                updateMixingSlope();
+            }
+            function updateMixingSlope() {
+                slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
+                updateMixingLine();
+            }
+            
+            // from : https://stackoverflow.com/questions/33367226/javascript-implementation-of-newton-vs-bisection
+            function bisection (func, interval, eps) {
+                var xLo = interval[0];
+                var xHi = interval[1];
+              
+
+                fHi = func(xHi);  // fb
+                fLo = func(xLo); // fa
+
+                if (fLo * fHi > 0)
+                    return undefined;
+
+                var xMid, fHi, fLo, fMid;
+                var iter = 0;
+                while (xHi - xLo > eps) {
+                    ++iter;
+                    xMid = (xLo+xHi)/2;
+                    fMid = func(xMid);  // fc
+
+                    if (Math.abs(fMid) < eps)
+                        return [xMid, iter];
+
+                    else if (fMid*fLo < 0) { // fa*fc < 0 --> [a,c]
+                        xHi = xMid;
+                        fHi = fMid;
+                    } else {  // fc*fb < 0 --> [c,b]
+                        xLo = xMid;
+                        fLo = fMid;
+                    }
+                }
+                
+                return [(xLo+xHi)/2, iter];
+            }
+
+            var w = 500;
+            var h = 500;
+            var margin = {left : 50, right : 50, top : 0, bottom : 50};
+
+            var ambient_temperature = 225;
+            var ambient_pressure_h2o = 1;
+
+            var cp = 1003;
+            var p = 200e2;
+            var epsilon = 0.622
+            var EI_H2O = 1.23
+            var LHV = 42e6;
+            var eta = 0.4;
+
+            var slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
+            
+            var mixing_start_temperature = 250;
+            var mixing_start_pressure = ambient_pressure_h2o + slope * (mixing_start_temperature - ambient_temperature);
+
+            var mixing_data = [{"temperature" : ambient_temperature, "pressure" : ambient_pressure_h2o},
+                                {"temperature" : mixing_start_temperature, "pressure" : mixing_start_pressure}];
+
+
+            var p_sat_liq = function (x) {
+                return Math.exp(p_sat_liq_exp(x))
+            }
+            var p_sat_liq_exp = function(x) {
+                return Math.log(100) - 6096.9385/x + 16.635794 - (2.711193e-2)*x+ (1.673952e-5)*x*x + 2.433502 * Math.log(x)
+            }
+
+            var dp_sat_liq_exp_dT = function(x) {
+                return (6096.9385/Math.pow(x,2))  - 2.711193e-2 + 2 * (1.673952e-5)*x + (2.433502 / x);
+            }
+
+
+            var p_sat_ice = function p_sat_ice(x) {
+            return 100*6.1121*Math.exp(22.587*(x-273.15)/(x + 273.86-273.15))
+            }
+
+            var svg = d3.select("body")
+                        .append("svg")
+                        .attr("width", w)
+                        .attr("height", h);
+
+            var checkSAC = function () {
+                
+                var interval =  [ambient_temperature, 250];
+         
+                var T_max_RH = bisection(x => slope - dp_sat_liq_exp_dT(x) * (ambient_pressure_h2o + slope * (x - ambient_temperature)),
+                            interval, 1e-12);
+                
+                if (T_max_RH === undefined) {
+                    return false;
+                }
+                T_max_RH = T_max_RH[0];
+                
+                var max_RH = (ambient_pressure_h2o + slope * (T_max_RH - ambient_temperature)) / p_sat_liq(T_max_RH);
+
+                return (max_RH > 1);
+            }
+
+            var checkISS = function (){
+                var RH_ice = ambient_pressure_h2o / p_sat_ice(ambient_temperature);
+
+                return (RH_ice > 1);
+            }
+            
+            var tempValues = d3.range(200, 250);
+
+            var data = []
+            tempValues.forEach(function (d) {
+                data.push({"temperature" : d, "pressure_sat_ice" : p_sat_ice(d), "pressure_sat_liq" : p_sat_liq(d)})
+            });
+
+            svg.append("defs").append("clipPath")
+            .attr("id", "clip")
+            .append("rect")
+            .attr("width", w)
+            .attr("height", h);
+            
+            var xScale = d3.scaleLinear().domain([200, 250]).range([margin.left, w - margin.right]);
+            var yScale = d3.scaleLinear().domain([0, 50]).range([h-margin.bottom, margin.top]);
+            
+            var xAxis = d3.axisBottom().scale(xScale);
+            var yAxis = d3.axisLeft().scale(yScale);
+            
+            svg.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate(0," + (h-margin.bottom) +")")
+                .call(xAxis);
+            svg.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate("+margin.bottom+",0)")
+                .call(yAxis);
+
+            svg.append("text")
+                .text("Temperature, Kelvin")
+                .attr("class", "axislabel")
+                .attr("transform", "translate(0," + h +")")
+                .attr("x", w/2)
+                .attr("y", -margin.left/3)
+                .style("text-anchor", "middle");
+
+            svg.append("text")
+                .text("Partial pressure water vapor, Pa")
+                .attr("class", "axislabel")
+                .attr("transform", "rotate(-90)")
+                .attr("y",margin.bottom/2)
+                .attr("x", -(h-margin.bottom)/2)
+                .style("text-anchor", "middle");
+
+
+            var ice_line = d3.line()
+                        .x(d => xScale(d.temperature))
+                        .y(d => yScale(d.pressure_sat_ice));
+            
+            var liq_line = d3.line()
+                        .x(d => xScale(d.temperature))
+                        .y(d => yScale(d.pressure_sat_liq));
+            
+            var mix_line = d3.line()
+                        .x(d => xScale(d.temperature))
+                        .y(d => yScale(d.pressure));
+
+            svg.append("path")
+                .datum(data)
+                .attr("d", ice_line)
+                .attr("fill", "none")
+                .attr("stroke", "red");
+            
+            svg.append("path")
+                .datum(mixing_data)
+                .attr("class", "mixing-line")
+                .attr("d", mix_line)
+                .attr("fill", "none")
+                .attr("stroke", "black");
+
+            svg.append("text")
+                .text("No contrail forms")
+                .attr("class", "mixing-line-label")
+                .attr("fill", "black")
+                .attr("x", xScale(250))
+                .attr("y", yScale(slope * (250 - ambient_temperature) + ambient_pressure_h2o));
+
+            svg.append("path")
+                .datum(data)
+                .attr("d", liq_line)
+                .attr("fill", "none")
+                .attr("stroke", "blue");
+
+            svg.append("circle")
+                .attr("cx", xScale(ambient_temperature))
+                .attr("cy", yScale(ambient_pressure_h2o))
+                .attr("r", 5)
+                .call(d3.drag()  //Define what to do on drag events
+					.on("start", dragStarted)
+					.on("drag", dragging)
+					.on("end", dragEnded));
+            
+            var updateMixingLine = function () {
+
+                mixing_data[0] = {"temperature" : ambient_temperature,
+                                  "pressure" : ambient_pressure_h2o};
+                mixing_data[1] = {"temperature" : 250,
+                                  "pressure" : ambient_pressure_h2o + slope * (250 - ambient_temperature)};
+                
+                var SAC = checkSAC();
+                var ISS = checkISS();
+                var color = "black"
+                var labelText = "No contrail";
+
+
+                if (SAC && ISS) {
+                    color = "magenta";
+                    labelText = "Persistent contrail";
+                }
+                else if (SAC) {
+                    color = "green";
+                    labelText = "Contrail";
+                }
+
+                svg.selectAll(".mixing-line")
+                .datum(mixing_data)
+                .attr("d", mix_line)
+                .attr("fill", "none")
+                .attr("stroke", color);
+
+                svg.selectAll(".mixing-line-label")
+                .attr("x", xScale(250))
+                .attr("y", yScale(slope * (250 - ambient_temperature) + ambient_pressure_h2o))
+                .text(labelText)
+                .attr("fill", color);
+
+            }
+            
+            //Define drag event functions
+			function dragStarted(d) {
+                d3.select(this).attr("r", 10);
+                d3.select(this).attr("cx", d3.event.x);
+                d3.select(this).attr("cy", d3.event.y);
+                ambient_temperature = xScale.invert(d3.select(this).attr("cx"));
+                ambient_pressure_h2o = yScale.invert(d3.select(this).attr("cy"));
+
+                updateMixingLine();
+			}
+
+			function dragging(d) {
+                d3.select(this).attr("cx", d3.event.x);
+                d3.select(this).attr("cy", d3.event.y);
+                ambient_temperature = xScale.invert(d3.select(this).attr("cx"));
+                ambient_pressure_h2o = yScale.invert(d3.select(this).attr("cy"));
+              
+                updateMixingLine();
+			}
+
+			function dragEnded(d) {
+                d3.select(this).attr("r", 5);
+                ambient_temperature = xScale.invert(d3.select(this).attr("cx"));
+                ambient_pressure_h2o = yScale.invert(d3.select(this).attr("cy"));
+                
+                updateMixingLine();
+			}
+            
+            updateMixingLine();
+            
+
+            
+            
+            function ringPathGen(radius, width, height) {
+
+                var padding = 4
+
+                function ringPath(p1, p2) {
+
+                    // Generate Paths
+                    var x = -(p1[0] - p2[0])
+                    y = -(p1[1] - p2[1])
+                    xSign = (x > 0) - (x < 0),
+                    ySign = (y > 0) - (y < 0),
+                    r = radius,
+                    d = "",
+                    a = Math.sqrt(r * r / 2),
+                    b = Math.sqrt(r * r - Math.min(y * y, x * x)),
+                    c = Math.sqrt(2 * Math.min(x * x, y * y));
+                    dir = ""
+                    if (x * x + y * y < r * r) {
+                        d = "";
+                    } else if (c < r) {
+                        if (Math.abs(x) > Math.abs(y)) {
+                            dir = xSign > 0 ? "E" : "W"
+                            d = "M" + (p1[0] + xSign * b) + "," + (p1[1] + y)
+                            + ",L" + (p1[0] + x) + "," + (p1[1] + y)
+                        } else {
+                            dir = ySign > 0 ? "S" : "N"
+                            d = "M" + (p1[0] + x) + "," + (p1[1] + ySign * b)
+                            + ",L" + (p1[0] + x) + "," + (p1[1] + y)
+                        }
+                    } else if (Math.abs(x) > Math.abs(y)) {
+                        dir = xSign > 0 ? "E" : "W"
+                        d = "M" + (p1[0] + xSign * a) + "," + (p1[1] + ySign * a) +
+                        ",L" + (p1[0] + xSign * Math.abs(y)) + "," + (p1[1] + y) +
+                        "L" + (p1[0] + x) + "," + (p1[1] + y);
+                    } else {
+                        dir = ySign > 0 ? "S" : "N"
+                        d = "M" + (p1[0] + xSign * a) + "," + (p1[1] + ySign * a) +
+                        ",L" + (p1[0] + x) + "," + (p1[1] + ySign * Math.abs(x)) +
+                        "L" + (p1[0] + x) + "," + (p1[1] + y);
+                    }
+
+                    var top = 0
+                    var left = 0
+                    // Generate Paths
+                    // if (dir == "S") { top  = (p2[1] + padding); left = (p2[0] - width/2) }
+                    // if (dir == "N") { top  = (p2[1] - height - padding); left = (p2[0] - width/2) }
+                    // if (dir == "W") { top  = (p2[1] - height/2); left = (p2[0] - width - padding) }
+                    // if (dir == "E") { top  = (p2[1] - height/2); left = (p2[0] + padding) }
+
+                    if (dir == "S") {
+                        top = (p2[1] + height / 2 + padding);
+                        left = (p2[0] - width / 2)
+                    }
+                    if (dir == "N") {
+                        top = (p2[1] - padding);
+                        left = (p2[0] - width / 2)
+                    }
+                    if (dir == "W") {
+                        top = (p2[1] + height / 4);
+                        left = (p2[0] - width - padding)
+                    }
+                    if (dir == "E") {
+                        top = (p2[1] + height / 4);
+                        left = (p2[0] + padding)
+                    }
+
+                    return {
+                        d: d,
+                        label: [left, top]
+                    }
+
+                }
+
+                return ringPath
+
+                }
+
+
+
+		</script>
+	</body>
+</html>
