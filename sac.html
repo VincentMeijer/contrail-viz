@@ -326,6 +326,12 @@
                     labelText = "Contrail";
                 }
 
+                mixing_data.forEach(d => {
+                    d.temperature = clamp(d.temperature, min_temp, max_temp);
+                    d.pressure = clamp(d.pressure, min_pressure, max_pressure);
+                });
+
+
                 svg.selectAll(".mixing-line")
                 .datum(mixing_data)
                 .attr("d", mix_line)
