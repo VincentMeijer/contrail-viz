@@ -127,8 +127,8 @@
                 return [(xLo+xHi)/2, iter];
             }
 
-            var w = 600;
-            var h = 600;
+            var width = 400;
+            var height = 400;
             var margin = {left : 50, right : 50, top : 50, bottom : 50};
 
             var ambient_temperature = 225;
@@ -168,8 +168,8 @@
 
             var svg = d3.select("#d3-col")
                         .append("svg")
-                        .attr("width", w)
-                        .attr("height", h);
+                        .attr("width", width)
+                        .attr("height", height);
 
             var checkSAC = function () {
                 
@@ -215,18 +215,18 @@
             // .attr("width", w)
             // .attr("height", h);
             
-            var xScale = d3.scaleLinear().domain([200, 250]).range([margin.left, w - margin.right]);
-            var yScale = d3.scaleLinear().domain([0, 50]).range([h-margin.bottom, margin.top]);
+            var xScale = d3.scaleLinear().domain([200, 250]).range([margin.left, width - margin.right]);
+            var yScale = d3.scaleLinear().domain([0, 50]).range([height-margin.bottom, margin.top]);
             
             var xAxis = d3.axisBottom().scale(xScale);
             var yAxis = d3.axisLeft().scale(yScale);
             
-            svg.append("g")
+            var xAxis_physical = svg.append("g")
                 .attr("class", "axis")
-                .attr("transform", "translate(0," + (h-margin.bottom) +")")
+                .attr("transform", "translate(0," + (height-margin.bottom) +")")
                 .call(xAxis);
 
-            svg.append("g")
+            var yAxis_physical = svg.append("g")
                 .attr("class", "axis")
                 .attr("transform", "translate("+margin.bottom+",0)")
                 .call(yAxis);
@@ -234,8 +234,8 @@
             svg.append("text")
                 .text("Temperature, Kelvin")
                 .attr("class", "axislabel")
-                .attr("transform", "translate(0," + h +")")
-                .attr("x", w/2)
+                .attr("transform", "translate(0," + height +")")
+                .attr("x", width/2)
                 .attr("y", -margin.left/3)
                 .style("text-anchor", "middle");
 
@@ -244,7 +244,7 @@
                 .attr("class", "axislabel")
                 .attr("transform", "rotate(-90)")
                 .attr("y",margin.bottom/2)
-                .attr("x", -(h-margin.bottom)/2)
+                .attr("x", -(height-margin.bottom)/2)
                 .style("text-anchor", "middle");
 
 
@@ -449,31 +449,50 @@
                 return ringPath
 
                 }
-            function drawChart() {
-                var currentWidth = parseInt(d3.select("#d3-col").style("width"), 10);
-                var currentHeight= parseInt(d3.select("#d3-col").style("width"), 10);
-                
-                var minDim = Math.min(currentHeight, currentWidth);
-                svg.attr("width", minDim);
-                svg.attr("height", minDim);
-                
-                xScale.range([margin.left, minDim - margin.right]);
-                //xAxis.call(d3.axisBottom());
-                yScale.range([minDim-margin.bottom, margin.top]);
-                //yAxis.call(d3.axisLeft());
 
-            }
+                function responsivefy(svg) {
+                    // container will be the DOM element
+                    // that the svg is appended to
+                    // we then measure the container
+                    // and find its aspect ratio
+                    const container = d3.select(svg.node().parentNode),
+                        width = parseInt(svg.style('width'), 10),
+                        height = parseInt(svg.style('height'), 10),
+                        aspect = width / height;
+                    
+                    // set viewBox attribute to the initial size
+                    // control scaling with preserveAspectRatio
+                    // resize svg on inital page load
+                    svg.attr('viewBox', `0 0 ${width} ${height}`)
+                        .attr('preserveAspectRatio', 'xMinYMid')
+                        .call(resize);
+                    
+                    // add a listener so the chart will be resized
+                    // when the window resizes
+                    // multiple listeners for the same event type
+                    // requires a namespace, i.e., 'click.foo'
+                    // api docs: https://goo.gl/F3ZCFr
+                    d3.select(window).on(
+                        'resize.' + container.attr('id'), 
+                        resize
+                    );
+                    
+                    // this is the code that resizes the chart
+                    // it will be called on load
+                    // and in response to window resizes
+                    // gets the width of the container
+                    // and resizes the svg to fill it
+                    // while maintaining a consistent aspect ratio
+                    function resize() {
+                        const w = parseInt(container.style('width'));
+                        const h = parseInt(container.style("height"));
+                        const minDim = Math.min(w, h);
+                        svg.attr('width', minDim);
+                        svg.attr('height', minDim);
+                    }
+                    }
 
-
-            drawChart();
-            
-            // Call the resize function once the window size changes
-            window.addEventListener("resize", drawChart);
-
-            // Call it once at the start to set the initial size
-            
-
-
+                responsivefy(svg);
 
 		</script>
 	</body>
