@@ -32,6 +32,7 @@
             #main-container {
             padding-top: 56px; /* Height of the navbar assuming standard navbar height. Adjust if your navbar is of a different height. */
         }
+
 		</style>
         
 	</head>
@@ -50,7 +51,7 @@
         <div class="container-fluid h-100" id="main-container">
             <div class="row h-100">
                 <!-- Controls column -->
-                <div class="col-md-2" id="controls-col">
+                <div class="col-md-1" id="controls-col">
                     <!-- Place your input elements (like sliders, dropdowns, etc.) here -->
                     <label>Select fuel</label>
                     <select name="fuel" id="fuels" onchange="changeFuel(this)">
@@ -61,7 +62,7 @@
                 </div>
         
                 <!-- D3 Visualization column -->
-                <div class="col-md-10" id="d3-col">
+                <div class="col-md-11" id="d3-col">
                     <svg>
                         
                     </svg>
@@ -169,7 +170,8 @@
             var svg = d3.select("#d3-col")
                         .append("svg")
                         .attr("width", width)
-                        .attr("height", height);
+                        .attr("height", height)
+                        .style("overflow", "visible");
 
             var checkSAC = function () {
                 
@@ -200,7 +202,7 @@
             var max_pressure = 50;
             var min_pressure = 0;
 
-            var tempValues = d3.range(min_temp, max_temp);
+            var tempValues = d3.range(min_temp, max_temp, 0.1);
 
             var data = []
             tempValues.forEach(function (d) {
@@ -287,7 +289,7 @@
                 .attr("class", "mixing-line-label")
                 .attr("fill", "black")
                 .attr("x", xScale(250))
-                .attr("y", yScale(slope * (250 - ambient_temperature) + ambient_pressure_h2o));
+                .attr("y", yScale(clamp(slope * (250 - ambient_temperature) + ambient_pressure_h2o, min_pressure, max_pressure)));
 
             svg.append("path")
                 .datum(data)
@@ -337,10 +339,13 @@
                 .attr("d", mix_line)
                 .attr("fill", "none")
                 .attr("stroke", color);
+                
+                svg.selectAll("circle")
+                .attr("fill", color);
 
                 svg.selectAll(".mixing-line-label")
                 .attr("x", xScale(250))
-                .attr("y", yScale(slope * (250 - ambient_temperature) + ambient_pressure_h2o))
+                .attr("y", yScale(clamp(slope * (250 - ambient_temperature) + ambient_pressure_h2o, min_pressure, max_pressure)))
                 .text(labelText)
                 .attr("fill", color);
 
