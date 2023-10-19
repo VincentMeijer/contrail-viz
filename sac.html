@@ -310,7 +310,7 @@
                                   "pressure" : ambient_pressure_h2o};
                 mixing_data[1] = {"temperature" : 250,
                                   "pressure" : ambient_pressure_h2o + slope * (250 - ambient_temperature)};
-                
+   
                 var SAC = checkSAC();
                 var ISS = checkISS();
                 var color = "black"
@@ -343,28 +343,39 @@
             //Define drag event functions
 			function dragStarted(d) {
                 d3.select(this).attr("r", 10);
-                d3.select(this).attr("cx", d3.event.x);
-                d3.select(this).attr("cy", d3.event.y);
-                ambient_temperature = xScale.invert(d3.select(this).attr("cx"));
-                ambient_pressure_h2o = yScale.invert(d3.select(this).attr("cy"));
+                var T = clamp(xScale.invert(d3.event.x), min_temp, max_temp);
+                var p = clamp(yScale.invert(d3.event.y), min_pressure, max_pressure);
+                d3.select(this).attr("cx", xScale(T));
+                d3.select(this).attr("cy", yScale(p));
+                ambient_temperature = T;
+                ambient_pressure_h2o = p;
 
                 updateMixingLine();
-			}
+            }
+
+            function clamp(x, min, max){
+                return Math.min(Math.max(x, min), max);
+            }
 
 			function dragging(d) {
-                d3.select(this).attr("cx", d3.event.x);
-                d3.select(this).attr("cy", d3.event.y);
-                ambient_temperature = xScale.invert(d3.select(this).attr("cx"));
-                ambient_pressure_h2o = yScale.invert(d3.select(this).attr("cy"));
-              
+                var T = clamp(xScale.invert(d3.event.x), min_temp, max_temp);
+                var p = clamp(yScale.invert(d3.event.y), min_pressure, max_pressure);
+
+                d3.select(this).attr("cx", xScale(T));
+                d3.select(this).attr("cy", yScale(p));
+                ambient_temperature = T;
+                ambient_pressure_h2o = p;
+            
                 updateMixingLine();
 			}
 
 			function dragEnded(d) {
                 d3.select(this).attr("r", 5);
-                ambient_temperature = xScale.invert(d3.select(this).attr("cx"));
-                ambient_pressure_h2o = yScale.invert(d3.select(this).attr("cy"));
-                
+                var T = clamp(xScale.invert(d3.event.x), min_temp, max_temp);
+                var p = clamp(yScale.invert(d3.event.y), min_pressure, max_pressure);
+                ambient_temperature = T;
+                ambient_pressure_h2o = p;
+          
                 updateMixingLine();
 			}
             
