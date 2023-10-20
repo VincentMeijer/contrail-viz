@@ -32,7 +32,7 @@
             }
 
             #main-container {
-                padding-top: 56px; /* Height of the navbar assuming standard navbar height. Adjust if your navbar is of a different height. */
+                padding-top: 80px; /* Height of the navbar assuming standard navbar height. Adjust if your navbar is of a different height. */
             }
             #custom-handle {
                 width: 2em;
@@ -42,16 +42,16 @@
                 text-align: center;
                 line-height: 1.6em;
             }
-
 		</style>
         
 	</head>
 	<body>
         <!-- Navbar content -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-dark fixed-top">
+        <nav class="navbar navbar-expand-sm navbar-light bg-dark fixed-top">
             <div class="container-fluid">
                 <!-- Image for the navbar (replace with your own) -->
                 <a class="navbar-brand" href="#">
+                    <p style="color:white">Vincent Meijer</p>
                     <!-- <img src="path_to_your_image.png" alt="Brand" width="30" height="24"> Set your image size -->
                 </a>
                 <!-- You can also add more navbar items if needed -->
@@ -405,22 +405,31 @@
                 
                 svg.selectAll("circle")
                 .attr("fill", color);
+                
+                if (mixing_data.length > 1) {
+                    var final_point = mixing_data[mixing_data.length - 1];
 
-                var final_point = mixing_data[mixing_data.length - 1];
-
-                svg.selectAll(".mixing-line-label")
-                .attr("x", xScale(final_point.temperature))
-                .attr("y", yScale(final_point.pressure))
-                .text(labelText)
-                .attr("fill", color);
-
+                    svg.selectAll(".mixing-line-label")
+                    .attr("x", xScale(final_point.temperature))
+                    .attr("y", yScale(final_point.pressure))
+                    .text(labelText)
+                    .attr("fill", color);
+                }
+                else {
+                    svg.selectAll(".mixing-line-label")
+                    .attr("x", xScale(max_temp))
+                    .attr("y", yScale(ambient_pressure_h2o))
+                    .text(labelText)
+                    .attr("fill", color);
+                }
+        
             }
             
             //Define drag event functions
 			function dragStarted(d) {
                 d3.select(this).attr("r", 10);
-                var T = clamp(xScale.invert(d3.event.x), min_temp, max_temp);
-                var p = clamp(yScale.invert(d3.event.y), min_pressure, max_pressure);
+                var [T, p] = mapToDomain(xScale.invert(d3.event.x),
+                                 yScale.invert(d3.event.y));
                 d3.select(this).attr("cx", xScale(T));
                 d3.select(this).attr("cy", yScale(p));
                 ambient_temperature = T;
@@ -433,10 +442,18 @@
                 return Math.min(Math.max(x, min), max);
             }
 
-			function dragging(d) {
-                var T = clamp(xScale.invert(d3.event.x), min_temp, max_temp);
-                var p = clamp(yScale.invert(d3.event.y), min_pressure, max_pressure);
+            function mapToDomain(T, p)
+            {
+                var Tin = clamp(T, min_temp, max_temp);
+                var p_liq = p_sat_liq(Tin);
+                var pin = clamp(p, min_pressure, Math.min(p_liq, max_pressure));
+                return [Tin, pin];
+            }
 
+			function dragging(d) {
+                var [T, p] = mapToDomain(xScale.invert(d3.event.x),
+                                 yScale.invert(d3.event.y));
+                
                 d3.select(this).attr("cx", xScale(T));
                 d3.select(this).attr("cy", yScale(p));
                 ambient_temperature = T;
@@ -447,8 +464,8 @@
 
 			function dragEnded(d) {
                 d3.select(this).attr("r", 5);
-                var T = clamp(xScale.invert(d3.event.x), min_temp, max_temp);
-                var p = clamp(yScale.invert(d3.event.y), min_pressure, max_pressure);
+                var [T, p] = mapToDomain(xScale.invert(d3.event.x),
+                                 yScale.invert(d3.event.y));
                 ambient_temperature = T;
                 ambient_pressure_h2o = p;
           
@@ -458,128 +475,49 @@
             updateMixingLine();
             
 
-            
-            
-            function ringPathGen(radius, width, height) {
-
-                var padding = 4
-
-                function ringPath(p1, p2) {
-
-                    // Generate Paths
-                    var x = -(p1[0] - p2[0])
-                    y = -(p1[1] - p2[1])
-                    xSign = (x > 0) - (x < 0),
-                    ySign = (y > 0) - (y < 0),
-                    r = radius,
-                    d = "",
-                    a = Math.sqrt(r * r / 2),
-                    b = Math.sqrt(r * r - Math.min(y * y, x * x)),
-                    c = Math.sqrt(2 * Math.min(x * x, y * y));
-                    dir = ""
-                    if (x * x + y * y < r * r) {
-                        d = "";
-                    } else if (c < r) {
-                        if (Math.abs(x) > Math.abs(y)) {
-                            dir = xSign > 0 ? "E" : "W"
-                            d = "M" + (p1[0] + xSign * b) + "," + (p1[1] + y)
-                            + ",L" + (p1[0] + x) + "," + (p1[1] + y)
-                        } else {
-                            dir = ySign > 0 ? "S" : "N"
-                            d = "M" + (p1[0] + x) + "," + (p1[1] + ySign * b)
-                            + ",L" + (p1[0] + x) + "," + (p1[1] + y)
-                        }
-                    } else if (Math.abs(x) > Math.abs(y)) {
-                        dir = xSign > 0 ? "E" : "W"
-                        d = "M" + (p1[0] + xSign * a) + "," + (p1[1] + ySign * a) +
-                        ",L" + (p1[0] + xSign * Math.abs(y)) + "," + (p1[1] + y) +
-                        "L" + (p1[0] + x) + "," + (p1[1] + y);
-                    } else {
-                        dir = ySign > 0 ? "S" : "N"
-                        d = "M" + (p1[0] + xSign * a) + "," + (p1[1] + ySign * a) +
-                        ",L" + (p1[0] + x) + "," + (p1[1] + ySign * Math.abs(x)) +
-                        "L" + (p1[0] + x) + "," + (p1[1] + y);
-                    }
-
-                    var top = 0
-                    var left = 0
-                    // Generate Paths
-                    // if (dir == "S") { top  = (p2[1] + padding); left = (p2[0] - width/2) }
-                    // if (dir == "N") { top  = (p2[1] - height - padding); left = (p2[0] - width/2) }
-                    // if (dir == "W") { top  = (p2[1] - height/2); left = (p2[0] - width - padding) }
-                    // if (dir == "E") { top  = (p2[1] - height/2); left = (p2[0] + padding) }
-
-                    if (dir == "S") {
-                        top = (p2[1] + height / 2 + padding);
-                        left = (p2[0] - width / 2)
-                    }
-                    if (dir == "N") {
-                        top = (p2[1] - padding);
-                        left = (p2[0] - width / 2)
-                    }
-                    if (dir == "W") {
-                        top = (p2[1] + height / 4);
-                        left = (p2[0] - width - padding)
-                    }
-                    if (dir == "E") {
-                        top = (p2[1] + height / 4);
-                        left = (p2[0] + padding)
-                    }
-
-                    return {
-                        d: d,
-                        label: [left, top]
-                    }
-
+            function responsivefy(svg) {
+                // container will be the DOM element
+                // that the svg is appended to
+                // we then measure the container
+                // and find its aspect ratio
+                const container = d3.select(svg.node().parentNode),
+                    width = parseInt(svg.style('width'), 10),
+                    height = parseInt(svg.style('height'), 10),
+                    aspect = width / height;
+                
+                // set viewBox attribute to the initial size
+                // control scaling with preserveAspectRatio
+                // resize svg on inital page load
+                svg.attr('viewBox', `0 0 ${width} ${height}`)
+                    .attr('preserveAspectRatio', 'xMinYMid')
+                    .call(resize);
+                
+                // add a listener so the chart will be resized
+                // when the window resizes
+                // multiple listeners for the same event type
+                // requires a namespace, i.e., 'click.foo'
+                // api docs: https://goo.gl/F3ZCFr
+                d3.select(window).on(
+                    'resize.' + container.attr('id'), 
+                    resize
+                );
+                
+                // this is the code that resizes the chart
+                // it will be called on load
+                // and in response to window resizes
+                // gets the width of the container
+                // and resizes the svg to fill it
+                // while maintaining a consistent aspect ratio
+                function resize() {
+                    const w = parseInt(container.style('width'));
+                    const h = parseInt(container.style("height"));
+                    const minDim = Math.min(w, h);
+                    svg.attr('width', minDim);
+                    svg.attr('height', minDim);
+                }
                 }
 
-                return ringPath
-
-                }
-
-                function responsivefy(svg) {
-                    // container will be the DOM element
-                    // that the svg is appended to
-                    // we then measure the container
-                    // and find its aspect ratio
-                    const container = d3.select(svg.node().parentNode),
-                        width = parseInt(svg.style('width'), 10),
-                        height = parseInt(svg.style('height'), 10),
-                        aspect = width / height;
-                    
-                    // set viewBox attribute to the initial size
-                    // control scaling with preserveAspectRatio
-                    // resize svg on inital page load
-                    svg.attr('viewBox', `0 0 ${width} ${height}`)
-                        .attr('preserveAspectRatio', 'xMinYMid')
-                        .call(resize);
-                    
-                    // add a listener so the chart will be resized
-                    // when the window resizes
-                    // multiple listeners for the same event type
-                    // requires a namespace, i.e., 'click.foo'
-                    // api docs: https://goo.gl/F3ZCFr
-                    d3.select(window).on(
-                        'resize.' + container.attr('id'), 
-                        resize
-                    );
-                    
-                    // this is the code that resizes the chart
-                    // it will be called on load
-                    // and in response to window resizes
-                    // gets the width of the container
-                    // and resizes the svg to fill it
-                    // while maintaining a consistent aspect ratio
-                    function resize() {
-                        const w = parseInt(container.style('width'));
-                        const h = parseInt(container.style("height"));
-                        const minDim = Math.min(w, h);
-                        svg.attr('width', minDim);
-                        svg.attr('height', minDim);
-                    }
-                    }
-
-                responsivefy(svg);
+            responsivefy(svg);
 
        
 
