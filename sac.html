@@ -301,6 +301,8 @@
                 .attr("x", -(height-margin.bottom)/2)
                 .style("text-anchor", "middle");
 
+            
+
 
             var ice_line = d3.line()
                         .defined(function(d) {
@@ -342,6 +344,22 @@
                 .attr("fill", "black")
                 .attr("x", xScale(250))
                 .attr("y", yScale(clamp(slope * (250 - ambient_temperature) + ambient_pressure_h2o, min_pressure, max_pressure)));
+            
+            svg.append("text")
+                .text(`Current temperature: ${ambient_temperature} K`)
+                .attr("class", "current-temperature")
+                .attr("x", 1.5 * margin.left)
+                .attr("y", 1.5 * margin.top)
+                .style("text-anchor", "left")
+                .style("font-size", 10);
+            
+            svg.append("text")
+                .text(`Current RH: ${Math.round(100 * ambient_pressure_h2o / p_sat_liq(ambient_temperature))} %`)
+                .attr("class", "current-RH")
+                .attr("x", 1.5 * margin.left)
+                .attr("y", 1.75 * margin.top)
+                .style("text-anchor", "left")
+                .style("font-size", 10);
 
             svg.append("path")
                 .datum(data)
@@ -360,6 +378,11 @@
 
             
             var updateMixingLine = function () {
+                svg.select(".current-temperature")
+                .text(`Current temperature: ${Math.round(ambient_temperature)} K`);
+                svg.select(".current-RH")
+                .text(`Current RH: ${Math.round(100 * ambient_pressure_h2o / p_sat_liq(ambient_temperature))} %`);
+                
 
                 slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
                 
