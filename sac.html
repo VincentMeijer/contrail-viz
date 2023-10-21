@@ -102,7 +102,7 @@
                 // var handle = $( "#custom-handle" );
                 $( "#efficiencySlider" ).slider({
                     min: 1,
-                    max: 99,
+                    max: 88,
                     value: efficiency_value,
                     slide: function( event, ui ) {
    
@@ -142,7 +142,7 @@
             }
             function updateMixingSlope() {
                 slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
-                console.log(slope);
+
                 updateMixingLine();
             }
             
@@ -213,6 +213,9 @@
             var dp_sat_liq_exp_dT = function(x) {
                 return (6096.9385/Math.pow(x,2))  - 2.711193e-2 + 2 * (1.673952e-5)*x + (2.433502 / x);
             }
+            var dp_sat_liq_dT = function(x) {
+                return dp_sat_liq_exp_dT(x) * p_sat_liq(x);
+            }
 
 
             var p_sat_ice = function p_sat_ice(x) {
@@ -227,8 +230,8 @@
 
             var checkSAC = function () {
                 
+                
                 var interval =  [ambient_temperature, 250];
-         
                 var T_max_RH = bisection(x => slope - dp_sat_liq_exp_dT(x) * (ambient_pressure_h2o + slope * (x - ambient_temperature)),
                             interval, 1e-12);
                 
@@ -236,11 +239,65 @@
                     return false;
                 }
                 T_max_RH = T_max_RH[0];
+                console.log(T_max_RH);
                 
                 var max_RH = (ambient_pressure_h2o + slope * (T_max_RH - ambient_temperature)) / p_sat_liq(T_max_RH);
 
                 return (max_RH > 1);
             }
+
+            var getTheta = function() {
+                var interval =  [min_temp, 500];
+                var T_max_RH = bisection(x => slope - dp_sat_liq_dT(x),
+                            interval, 1e-12);
+                
+                return T_max_RH[0];
+            }
+            var getLimitingMixingLine = function() {
+                var theta = getTheta();
+                var theta_p = p_sat_liq(theta);
+
+                var limitingMixingData = [];
+
+                tempValues.forEach(T => {
+                    var p_h2o_temp = theta_p + (T - theta) * slope;
+                    if ((p_h2o_temp > min_pressure) && (p_h2o_temp < max_pressure)) {
+                        limitingMixingData.push({"temperature" : T,
+                        "pressure" : p_h2o_temp});
+
+                
+                    }
+                    
+                });
+                return limitingMixingData;
+
+            }
+            var updateLimitingMixingLine = function () {
+                var dat = getLimitingMixingLine();
+                svg.selectAll(".limiting-mixing-line")
+                    .datum(dat)
+                    .attr("d", mix_line)
+                    .attr("fill", "none")
+                    .attr("stroke", "black");
+
+            }
+
+            var drawLimitingMixingLine = function() {
+
+                var limitingMixingData = getLimitingMixingLine();
+
+
+                svg.append("path")
+                    .datum(limitingMixingData)
+                    .attr("class","limiting-mixing-line")
+                    .attr("d", mix_line)
+                    .attr("fill", "none")
+                    .attr("stroke", "black")
+                    .style("stroke-dasharray", "1");
+
+            }
+
+            
 
             var checkISS = function (){
                 var RH_ice = ambient_pressure_h2o / p_sat_ice(ambient_temperature);
@@ -324,6 +381,36 @@
                         // })
                         .x(d => xScale(d.temperature))
                         .y(d => yScale(d.pressure));
+            
+            var areaData = getPersistentAreaLowerBound();
+            var nAreaData = getNonPersistentAreaLowerBound();
+
+            // tempValues.forEach(d => areaData.push({"temperature":d}));
+            svg.append("path")
+                .datum(areaData)
+                .attr("class","persistent-area")
+                .attr("fill", "#cce5df")
+                .attr("opacity", 0.1)
+                .attr("stroke", "#69b3a2")
+                .attr("stroke-width", 1.5)
+                .attr("d", d3.area()
+                    .x(d => {return xScale(clamp(d.temperature, min_temp, 246));})
+                    .y0(d => {return yScale(clamp(d.pressure, min_pressure, max_pressure));})
+                    .y1(d => {return yScale(clamp(p_sat_liq(d.temperature), min_pressure, max_pressure));})
+                    );
+            
+            svg.append("path")
+                .datum(getNonPersistentAreaLowerBound())
+                .attr("fill", "green")
+                .attr("class","non-persistent-area")
+                .attr("stroke", "green")
+                .attr("opacity", 0.1)
+                .attr("stroke-width", 1.5)
+                .attr("d", d3.area()
+                .x(d => {return xScale(clamp(d.temperature, min_temp, 246));})
+                .y0(d => {return yScale(clamp(d.pressure, min_pressure, max_pressure));})
+                .y1(d => {return yScale(clamp(p_sat_ice(d.temperature), min_pressure, max_pressure));})
+                );
 
             svg.append("path")
                 .datum(data)
@@ -375,7 +462,9 @@
 					.on("start", dragStarted)
 					.on("drag", dragging)
 					.on("end", dragEnded));
-
+           
+    
+            drawLimitingMixingLine();
             
             var updateMixingLine = function () {
                 svg.select(".current-temperature")
@@ -425,10 +514,33 @@
                 .attr("d", mix_line)
                 .attr("fill", "none")
                 .attr("stroke", color);
+
+                svg.selectAll(".persistent-area")
+                    .datum(getPersistentAreaLowerBound())
+                    .attr("fill", "magenta")
+                    .attr("stroke", "magenta")
+                    .attr("stroke-width", 1.5)
+                    .attr("d", d3.area()
+                    .x(d => {return xScale(clamp(d.temperature, min_temp, 246));})
+                    .y0(d => {return yScale(clamp(d.pressure, min_pressure, max_pressure));})
+                    .y1(d => {return yScale(clamp(p_sat_liq(d.temperature), min_pressure, max_pressure));})
+                    );
+
+
+                svg.selectAll(".non-persistent-area")
+                    .datum(getNonPersistentAreaLowerBound())
+                    .attr("fill", "green")
+                    .attr("stroke", "green")
+                    .attr("stroke-width", 1.5)
+                    .attr("d", d3.area()
+                    .x(d => {return xScale(clamp(d.temperature, min_temp, 246));})
+                    .y0(d => {return yScale(clamp(d.pressure, min_pressure, max_pressure));})
+                    .y1(d => {return yScale(clamp(p_sat_ice(d.temperature), min_pressure, max_pressure));})
+                    );
                 
                 svg.selectAll("circle")
                 .attr("fill", color);
-                
+
                 if (mixing_data.length > 1) {
                     var final_point = mixing_data[mixing_data.length - 1];
 
@@ -445,6 +557,8 @@
                     .text(labelText)
                     .attr("fill", color);
                 }
+
+                updateLimitingMixingLine();
         
             }
             
@@ -484,6 +598,38 @@
             
                 updateMixingLine();
 			}
+
+            function getPersistentAreaLowerBound() {
+                var theta = getTheta();
+                var curveData = [];
+
+                tempValues.forEach(T => {
+                    var p = p_sat_liq(theta) + slope * (T - theta);
+
+                    if (T <= theta) {
+                        curveData.push({"temperature" : T,
+                                    "pressure":  Math.max(p, p_sat_ice(T))});
+                    }
+                });
+
+                return curveData;
+            }
+
+            function getNonPersistentAreaLowerBound() {
+                var theta = getTheta();
+                var curveData = [];
+
+                tempValues.forEach(T => {
+                    var p = p_sat_liq(theta) + slope * (T - theta);
+
+                    if ((T <= theta) && (p <= p_sat_ice(T))) {
+                        curveData.push({"temperature" : T,
+                                    "pressure":  Math.max(p, 0)});
+                    }
+                });
+
+                return curveData;
+            }
 
 			function dragEnded(d) {
                 d3.select(this).attr("r", 5);
