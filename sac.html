@@ -9,6 +9,14 @@
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">script>
         <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+        <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+        </script>
+        <script>
+            MathJax = {
+              tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+            };
+        </script>
 		<style type="text/css">
             html, body, #main-container {
                 height: 100%;
@@ -23,7 +31,6 @@
 			rect.hover {
                 fill : "orange";
             }	
-
             .axislabel{
                 font-size:15px;
                 line-height:18px;
@@ -63,12 +70,16 @@
                 <!-- Controls column -->
                 <div class="col-md-2" id="controls-col">
                     <!-- Place your input elements (like sliders, dropdowns, etc.) here -->
+                    <p>The mixing line slope is given by: </p>
+                    <p>$$G = \frac{c_p~p}{\epsilon} \frac{\text{E}_{\text{H}_2\text{O}}}{(1-\eta)\text{LHV}}$$</p>
+                    <h4>Settings</h4>
                     <label>Select fuel</label>
                     <select name="fuel" id="fuels" onchange="changeFuel(this)">
                         <option value="Jet-A">Jet-A</option>
                         <option value="Hydrogen">Hydrogen</option>
                         <option value="SAF">SAF</option>
                     </select>
+                    
                     <p>
                         <label for="efficiency">Efficiency:</label>
                         <input type="text" id="efficiency" readonly style="border:0;">
@@ -97,7 +108,7 @@
 
 		<script type="text/javascript">
             var efficiency_value = 40;
-            var pressure_value = 300;
+            var pressure_value = 300; 
             $( function() {
                 // var handle = $( "#custom-handle" );
                 $( "#efficiencySlider" ).slider({
