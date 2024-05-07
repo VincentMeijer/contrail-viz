@@ -111,7 +111,7 @@
             </div>
         </footer>
 		<script type="module">
-            import { p_sat_liq, dp_sat_liq_dT, dp_sat_liq_exp_dT, p_sat_liq_exp } from './thermo.js';
+            import { p_sat_liq, dp_sat_liq_dT, dp_sat_liq_exp_dT, p_sat_liq_exp, p_sat_ice } from './thermo.js';
             import { fuelData } from './constants.js';
             
             
@@ -230,9 +230,7 @@
 
 
 
-            var p_sat_ice = function p_sat_ice(x) {
-            return 100*6.1121*Math.exp(22.587*(x-273.15)/(x + 273.86-273.15))
-            }
+            
 
             var svg = d3.select("#d3-col")
                         .append("svg")

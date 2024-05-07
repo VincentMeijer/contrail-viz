@@ -10,3 +10,6 @@ export const dp_sat_liq_exp_dT = function(x) {
 export const dp_sat_liq_dT = function(x) {
     return dp_sat_liq_exp_dT(x) * p_sat_liq(x);
 }
+export const p_sat_ice = function p_sat_ice(x) {
+    return 100*6.1121*Math.exp(22.587*(x-273.15)/(x + 273.86-273.15))
+}
