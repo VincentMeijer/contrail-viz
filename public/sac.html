@@ -51,6 +51,7 @@
             }
 		</style>
         <script src="thermo.js" type="module"></script>
+        <script src="constants.js" type="module"></script>
 	</head>
 	<body>
         <!-- Navbar content -->
@@ -76,7 +77,7 @@
                     <p>$$G = \frac{c_p~p}{\epsilon} \frac{\text{E}_{\text{H}_2\text{O}}}{(1-\eta)\text{LHV}}$$</p>
                     <h4>Settings</h4>
                     <label>Select fuel</label>
-                    <select name="fuel" id="fuels" onchange="changeFuel(this)">
+                    <select name="fuel" id="fuels">
                         <option value="Jet-A">Jet-A</option>
                         <option value="Hydrogen">Hydrogen</option>
                         <option value="SAF">SAF</option>
@@ -111,9 +112,13 @@
         </footer>
 		<script type="module">
             import { p_sat_liq, dp_sat_liq_dT, dp_sat_liq_exp_dT, p_sat_liq_exp } from './thermo.js';
-
+            import { fuelData } from './constants.js';
+            
+            
             var efficiency_value = 40;
-            var pressure_value = 300; 
+            var pressure_value = 300;
+            var selectedFuel = "Jet-A";
+            
             $( function() {
                 // var handle = $( "#custom-handle" );
                 $( "#efficiencySlider" ).slider({
@@ -144,9 +149,7 @@
                 $("#pressure").val(pressure_value);
             } );
             
-            var fuelData = {"Jet-A" : {"eta" : 0.4, "EI_H2O" : 1.23, "LHV" : 42e6},
-                        "SAF" : {"eta" : 0.4, "EI_H2O" : 1.371, "LHV" : 44.17e6},
-                        "Hydrogen" : {"eta" : 0.4, "EI_H2O" : 9.0, "LHV" : 120.9e6}}
+            
 
             function changeFuel(object) {
                 selectedFuel = object.value 
@@ -156,6 +159,13 @@
                 LHV = fuelData[selectedFuel].LHV;
                 updateMixingSlope();
             }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                document.getElementById('fuels').addEventListener('change', function() {
+                    changeFuel(this);
+                });
+            });
+
             function updateMixingSlope() {
                 slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
 
@@ -241,7 +251,6 @@
                     return false;
                 }
                 T_max_RH = T_max_RH[0];
-                console.log(T_max_RH);
                 
                 var max_RH = (ambient_pressure_h2o + slope * (T_max_RH - ambient_temperature)) / p_sat_liq(T_max_RH);
 
