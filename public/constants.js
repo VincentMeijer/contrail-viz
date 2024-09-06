@@ -70,7 +70,7 @@ export class Fuel
         this.eta = fuelData[name].eta;
         this.EI_H2O = fuelData[name].EI_H2O;
         this.LHV = fuelData[name].LHV;
-        this.equation = "$$G = \\frac{c_p~p}{\\epsilon} \\frac{\\text{E}_{\\text{H}_2\\text{O}}}{(1-\\eta)\\text{LHV}}$$";
+        this.equation = "$$G = \\frac{c_p~p}{\\epsilon} \\frac{\\text{EI}_{\\text{H}_2\\text{O}}}{(1-\\eta)\\text{LHV}}$$";
         // Default user parameters and their range (min, max, step)
         this.userParams = {
             pressure: { value: 300, min: 100, max: 1000, step: 10 },
