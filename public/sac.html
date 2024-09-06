@@ -74,14 +74,14 @@
                 <div class="col-md-2" id="controls-col">
                     <!-- Place your input elements (like sliders, dropdowns, etc.) here -->
                     <p>The mixing line slope is given by: </p>
-                    <p>$$G = \frac{c_p~p}{\epsilon} \frac{\text{E}_{\text{H}_2\text{O}}}{(1-\eta)\text{LHV}}$$</p>
+                    <p name="equationforslope"></p>
                     <h4>Settings</h4>
                     <label>Select energy source</label>
                     <select name="fuel" id="fuels">
                         <option value="Jet-A">Jet-A</option>
                         <option value="Hydrogen">Hydrogen combustion</option>
                         <option value="SAF">SAF</option>
-                        <option value="Hydrogen-FC">Hydrogen fuel cell</option>
+                        <option value="H2FC">Hydrogen fuel cell</option>
                     </select>
                     
                     <div id="slidersContainer"></div>
@@ -114,7 +114,7 @@
         </footer>
 		<script type="module">
             import { p_sat_liq, dp_sat_liq_dT, dp_sat_liq_exp_dT, p_sat_liq_exp, p_sat_ice } from './thermo.js';
-            import { fuelData, Fuel} from './constants.js';
+            import { fuelData, Fuel, FuelCell, getEnergySource } from './constants.js';
             
             
             const createSliders = function(fuelObj) {
@@ -162,56 +162,35 @@
                     }
                 }
             }
+            function removeSliders() {
+                const container = document.getElementById("slidersContainer");
+                container.innerHTML = "";  // Clears the entire container, removing all sliders and associated elements
+            }
 
-
-            // var efficiency_value = 40;
-            // var pressure_value = 300;
             var selectedFuel = "Jet-A";
             var fuel = new Fuel(selectedFuel);
+            var slope;
+
+            // Executes when document is ready
             $( function() {
                 updateMixingLine(fuel.evaluateSlope());
+                $("[name='equationforslope']").html(fuel.equation);
+                MathJax.typeset();
                 createSliders(fuel);
+                slope = fuel.evaluateSlope();
             });
-            //console.log(fuel);
-            
-            // Executes when document is ready
-            // $( function() {
-            //     $( "#efficiencySlider" ).slider({
-            //         min: 1,
-            //         max: 88,
-            //         value: efficiency_value,
-            //         slide: function( event, ui ) {
-   
-            //             efficiency_value = ui.value;
-            //             $("#efficiency").val(efficiency_value);
-            //             eta = efficiency_value / 100;
-            //             updateMixingSlope();
-            //         }
-            //     });
-            //     $("#efficiency").val(efficiency_value);
 
-            //     $( "#pressureSlider" ).slider({
-            //         min: 100,
-            //         max: 450,
-            //         value: pressure_value,
-            //         slide: function( event, ui ) {
-            //             pressure_value = ui.value;
-            //             $("#pressure").val(pressure_value);
-            //             p = pressure_value * 100;
-            //             updateMixingSlope();
-            //         }
-            //     });
-            //     $("#pressure").val(pressure_value);
-            // } );
             
-            
+    
 
             function changeFuel(object) {
+                removeSliders();
                 selectedFuel = object.value 
                 console.log("Changing selected fuel to " + selectedFuel);
-                eta = fuelData[selectedFuel].eta;
-                EI_H2O = fuelData[selectedFuel].EI_H2O;
-                LHV = fuelData[selectedFuel].LHV;
+                fuel = getEnergySource(selectedFuel);
+                $("[name='equationforslope']").html(fuel.equation);
+                MathJax.typeset();
+                createSliders(fuel);
                 updateMixingLine();
             }
 
@@ -268,15 +247,6 @@
 
             var ambient_temperature = 225;
             var ambient_pressure_h2o = 1;
-
-            var cp = 1003;
-            var p = 200e2;
-            var epsilon = 0.622
-            var EI_H2O = 1.23
-            var LHV = 42e6;
-            var eta = 0.4;
-
-            var slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
             
             var mixing_start_temperature = 250;
             var mixing_start_pressure = ambient_pressure_h2o + slope * (mixing_start_temperature - ambient_temperature);
@@ -294,7 +264,7 @@
                         .attr("height", height)
                         .style("overflow", "visible");
 
-            var checkSAC = function () {
+            var checkSAC = function (slope) {
                 
                 
                 var interval =  [ambient_temperature, 250];
@@ -311,15 +281,15 @@
                 return (max_RH > 1);
             }
 
-            var getTheta = function() {
+            var getTheta = function(slope) {
                 var interval =  [min_temp, 500];
                 var T_max_RH = bisection(x => slope - dp_sat_liq_dT(x),
                             interval, 1e-12);
                 
                 return T_max_RH[0];
             }
-            var getLimitingMixingLine = function() {
-                var theta = getTheta();
+            var getLimitingMixingLine = function(slope) {
+                var theta = getTheta(slope);
                 var theta_p = p_sat_liq(theta);
 
                 var limitingMixingData = [];
@@ -337,8 +307,8 @@
                 return limitingMixingData;
 
             }
-            var updateLimitingMixingLine = function () {
-                var dat = getLimitingMixingLine();
+            var updateLimitingMixingLine = function (slope) {
+                var dat = getLimitingMixingLine(slope);
                 svg.selectAll(".limiting-mixing-line")
                     .datum(dat)
                     .attr("d", mix_line)
@@ -347,9 +317,9 @@
 
             }
 
-            var drawLimitingMixingLine = function() {
+            var drawLimitingMixingLine = function(slope) {
 
-                var limitingMixingData = getLimitingMixingLine();
+                var limitingMixingData = getLimitingMixingLine(slope);
 
 
                 svg.append("path")
@@ -435,8 +405,8 @@
                         .x(d => xScale(d.temperature))
                         .y(d => yScale(d.pressure));
             
-            var areaData = getPersistentAreaLowerBound();
-            var nAreaData = getNonPersistentAreaLowerBound();
+            var areaData = getPersistentAreaLowerBound(slope);
+            var nAreaData = getNonPersistentAreaLowerBound(slope);
 
             svg.append("path")
                 .datum(areaData)
@@ -516,7 +486,7 @@
 					.on("end", dragEnded));
            
     
-            drawLimitingMixingLine();
+            drawLimitingMixingLine(slope);
             
             var updateMixingLine = function () {
                 svg.select(".current-temperature")
@@ -538,7 +508,7 @@
                         }
                 );
 
-                var SAC = checkSAC();
+                var SAC = checkSAC(slope);
                 var ISS = checkISS();
                 var color = "black"
                 var labelText = "No contrail";
@@ -566,7 +536,7 @@
                 .attr("stroke", color);
 
                 svg.selectAll(".persistent-area")
-                    .datum(getPersistentAreaLowerBound())
+                    .datum(getPersistentAreaLowerBound(slope))
                     .attr("fill", "magenta")
                     .attr("stroke", "magenta")
                     .attr("stroke-width", 1.5)
@@ -578,7 +548,7 @@
 
 
                 svg.selectAll(".non-persistent-area")
-                    .datum(getNonPersistentAreaLowerBound())
+                    .datum(getNonPersistentAreaLowerBound(slope))
                     .attr("fill", "green")
                     .attr("stroke", "green")
                     .attr("stroke-width", 1.5)
@@ -608,11 +578,11 @@
                     .attr("fill", color);
                 }
 
-                updateLimitingMixingLine();
+                updateLimitingMixingLine(slope);
         
             }
             
-            //Define drag event functions
+            // Define drag event functions
 			function dragStarted(d) {
                 d3.select(this).attr("r", 10);
                 var [T, p] = mapToDomain(xScale.invert(d3.event.x),
@@ -649,8 +619,8 @@
                 updateMixingLine();
 			}
 
-            function getPersistentAreaLowerBound() {
-                var theta = getTheta();
+            function getPersistentAreaLowerBound(slope) {
+                var theta = getTheta(slope);
                 var curveData = [];
 
                 tempValues.forEach(T => {
@@ -665,8 +635,8 @@
                 return curveData;
             }
 
-            function getNonPersistentAreaLowerBound() {
-                var theta = getTheta();
+            function getNonPersistentAreaLowerBound(slope) {
+                var theta = getTheta(slope);
                 var curveData = [];
 
                 tempValues.forEach(T => {
