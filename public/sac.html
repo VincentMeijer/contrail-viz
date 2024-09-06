@@ -328,13 +328,6 @@
             });
             
             
-
-            // svg.append("defs").append("clipPath")
-            // .attr("id", "clip")
-            // .append("rect")
-            // .attr("width", w)
-            // .attr("height", h);
-            
             var xScale = d3.scaleLinear().domain([200, 250]).range([margin.left, width - margin.right]);
             var yScale = d3.scaleLinear().domain([0, 50]).range([height-margin.bottom, margin.top]);
             
@@ -367,8 +360,6 @@
                 .attr("x", -(height-margin.bottom)/2)
                 .style("text-anchor", "middle");
 
-            
-
 
             var ice_line = d3.line()
                         .defined(function(d) {
@@ -385,16 +376,12 @@
                         .y(d => yScale(d.pressure_sat_liq));
             
             var mix_line = d3.line()
-                        // .defined(function(d) {
-                        //     return d.temperature < max_temp &&  d.temperature > min_temp && d.pressure > min_pressure && d.pressure < max_pressure;
-                        // })
                         .x(d => xScale(d.temperature))
                         .y(d => yScale(d.pressure));
             
             var areaData = getPersistentAreaLowerBound();
             var nAreaData = getNonPersistentAreaLowerBound();
 
-            // tempValues.forEach(d => areaData.push({"temperature":d}));
             svg.append("path")
                 .datum(areaData)
                 .attr("class","persistent-area")
@@ -484,8 +471,6 @@
 
                 slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
                 
-                // mixing_data[0] = {"temperature" : ambient_temperature,
-                //                   "pressure" : ambient_pressure_h2o};
                 mixing_data = [];
                 var localTempValues = d3.range(ambient_temperature, max_temp, 0.1);
                 localTempValues.forEach(
