@@ -76,14 +76,16 @@
                     <p>The mixing line slope is given by: </p>
                     <p>$$G = \frac{c_p~p}{\epsilon} \frac{\text{E}_{\text{H}_2\text{O}}}{(1-\eta)\text{LHV}}$$</p>
                     <h4>Settings</h4>
-                    <label>Select fuel</label>
+                    <label>Select energy source</label>
                     <select name="fuel" id="fuels">
                         <option value="Jet-A">Jet-A</option>
-                        <option value="Hydrogen">Hydrogen</option>
+                        <option value="Hydrogen">Hydrogen combustion</option>
                         <option value="SAF">SAF</option>
+                        <option value="Hydrogen-FC">Hydrogen fuel cell</option>
                     </select>
                     
-                    <p>
+                    <div id="slidersContainer"></div>
+                    <!-- <p>
                         <label for="efficiency">Efficiency:</label>
                         <input type="text" id="efficiency" readonly style="border:0;">
                     </p>
@@ -92,7 +94,7 @@
                         <label for="pressure">Pressure (hPa):</label>
                         <input type="text" id="pressure" readonly style="border:0;">
                     </p>
-                    <div id="pressureSlider" class="ui-slider-handle"></div>
+                    <div id="pressureSlider" class="ui-slider-handle"></div> -->
                 </div>
         
                 <!-- D3 Visualization column -->
@@ -112,42 +114,95 @@
         </footer>
 		<script type="module">
             import { p_sat_liq, dp_sat_liq_dT, dp_sat_liq_exp_dT, p_sat_liq_exp, p_sat_ice } from './thermo.js';
-            import { fuelData } from './constants.js';
+            import { fuelData, Fuel} from './constants.js';
             
             
-            var efficiency_value = 40;
-            var pressure_value = 300;
-            var selectedFuel = "Jet-A";
-            
-            $( function() {
-                // var handle = $( "#custom-handle" );
-                $( "#efficiencySlider" ).slider({
-                    min: 1,
-                    max: 88,
-                    value: efficiency_value,
-                    slide: function( event, ui ) {
-   
-                        efficiency_value = ui.value;
-                        $("#efficiency").val(efficiency_value);
-                        eta = efficiency_value / 100;
-                        updateMixingSlope();
-                    }
-                });
-                $("#efficiency").val(efficiency_value);
+            const createSliders = function(fuelObj) {
+                const container = document.getElementById("slidersContainer");
+                container.innerHTML = "";  // Clear the container
 
-                $( "#pressureSlider" ).slider({
-                    min: 100,
-                    max: 450,
-                    value: pressure_value,
-                    slide: function( event, ui ) {
-                        pressure_value = ui.value;
-                        $("#pressure").val(pressure_value);
-                        p = pressure_value * 100;
-                        updateMixingSlope();
+                for (const param in fuelObj.userParams) {
+                    if (fuelObj.userParams.hasOwnProperty(param)) {
+                        const paramData = fuelObj.userParams[param];
+
+                        // Create a label for the slider
+                        const label = document.createElement("label");
+                        label.for = `${param}Slider`;
+                        label.textContent = `${param.charAt(0).toUpperCase() + param.slice(1)}: `;
+
+                        // Create a read-only input field to display the current value
+                        const valueDisplay = document.createElement("input");
+                        valueDisplay.type = "text";
+                        valueDisplay.id = `${param}Value`;
+                        valueDisplay.readOnly = true;
+                        valueDisplay.style.border = "0";
+                        valueDisplay.value = paramData.value;
+
+                        // Create a div for the slider
+                        const sliderDiv = document.createElement("div");
+                        sliderDiv.id = `${param}Slider`;
+
+                        // Append the label, value display, and slider div to the container
+                        container.appendChild(label);
+                        container.appendChild(valueDisplay);
+                        container.appendChild(sliderDiv);
+
+                        // Initialize the slider
+                        $(`#${param}Slider`).slider({
+                            min: paramData.min,
+                            max: paramData.max,
+                            step: paramData.step,
+                            value: paramData.value,
+                            slide: function(event, ui) {
+                                $(`#${param}Value`).val(ui.value);
+                                fuelObj.updateUserParam(param, ui.value);
+                                updateMixingLine(fuelObj.evaluateSlope());  // Update the mixing line
+                            }
+                        });
                     }
-                });
-                $("#pressure").val(pressure_value);
-            } );
+                }
+            }
+
+
+            // var efficiency_value = 40;
+            // var pressure_value = 300;
+            var selectedFuel = "Jet-A";
+            var fuel = new Fuel(selectedFuel);
+            $( function() {
+                updateMixingLine(fuel.evaluateSlope());
+                createSliders(fuel);
+            });
+            //console.log(fuel);
+            
+            // Executes when document is ready
+            // $( function() {
+            //     $( "#efficiencySlider" ).slider({
+            //         min: 1,
+            //         max: 88,
+            //         value: efficiency_value,
+            //         slide: function( event, ui ) {
+   
+            //             efficiency_value = ui.value;
+            //             $("#efficiency").val(efficiency_value);
+            //             eta = efficiency_value / 100;
+            //             updateMixingSlope();
+            //         }
+            //     });
+            //     $("#efficiency").val(efficiency_value);
+
+            //     $( "#pressureSlider" ).slider({
+            //         min: 100,
+            //         max: 450,
+            //         value: pressure_value,
+            //         slide: function( event, ui ) {
+            //             pressure_value = ui.value;
+            //             $("#pressure").val(pressure_value);
+            //             p = pressure_value * 100;
+            //             updateMixingSlope();
+            //         }
+            //     });
+            //     $("#pressure").val(pressure_value);
+            // } );
             
             
 
@@ -157,7 +212,7 @@
                 eta = fuelData[selectedFuel].eta;
                 EI_H2O = fuelData[selectedFuel].EI_H2O;
                 LHV = fuelData[selectedFuel].LHV;
-                updateMixingSlope();
+                updateMixingLine();
             }
 
             document.addEventListener('DOMContentLoaded', function() {
@@ -167,9 +222,10 @@
             });
 
             function updateMixingSlope() {
-                slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
+                //slope = fuel.evaluateSlope();
+                //console.log(slope);
 
-                updateMixingLine();
+                updateMixingLine(fuel.evaluateSlope());
             }
             
             // from : https://stackoverflow.com/questions/33367226/javascript-implementation-of-newton-vs-bisection
@@ -468,8 +524,8 @@
                 svg.select(".current-RH")
                 .text(`Current RH: ${Math.round(100 * ambient_pressure_h2o / p_sat_liq(ambient_temperature))} %`);
                 
+                var slope = fuel.evaluateSlope();
 
-                slope = cp * p * EI_H2O / (epsilon * LHV * (1-eta));
                 
                 mixing_data = [];
                 var localTempValues = d3.range(ambient_temperature, max_temp, 0.1);
