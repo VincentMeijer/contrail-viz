@@ -43,14 +43,16 @@ export class FuelCell
             AFR: { value: 3, min: 1 / (2 * X_O2), max: 10, step: 0.1 }
         };
     }
-
-    evaluateSlope() {
+    
+    evaluateSlope(inputPressure) {
         const { pressure, efficiency, AFR } = this.userParams;
-
+        if (inputPressure === undefined) {
+            inputPressure = pressure.value;
+        }
         // First calculate c_p for exhaust mixture
         const cp =  (cp_H2O_molar + cp_air_molar * (AFR.value - 0.5)) / (AFR.value + 0.5);
         // 100 is to convert from hPa to Pa
-        return 100 * cp * pressure.value / ((1 - efficiency.value * this.eta0) * this.deltaH);
+        return 100 * cp * inputPressure / ((1 - efficiency.value * this.eta0) * this.deltaH);
     
     }
     updateUserParam(param, value) {
@@ -78,11 +80,12 @@ export class Fuel
         };
     }
 
-    // Function to evaluate the slope
-    evaluateSlope() {
+    evaluateSlope(inputPressure) {
         const { pressure, efficiency } = this.userParams;
-        // 100 is to convert from hPa to Pa
-        return 100 * cp_air * pressure.value * this.EI_H2O / (epsilon * this.LHV * (1 - efficiency.value));
+        if (inputPressure === undefined) {
+            inputPressure = pressure.value;
+        }
+        return 100 * cp_air * inputPressure * this.EI_H2O / (epsilon * this.LHV * (1 - efficiency.value));
     }
 
     // Method to update user parameters dynamically

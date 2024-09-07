@@ -98,7 +98,12 @@
                 </div>
         
                 <!-- D3 Visualization column -->
-                <div class="col-md-10" id="d3-col">
+                <div class="col-md-5" id="d3-col-sac">
+                    <svg>
+
+                    </svg>
+                </div>
+                <div class="col-md-5" id="d3-col-sad">
                     <svg>
 
                     </svg>
@@ -115,7 +120,9 @@
 		<script type="module">
             import { p_sat_liq, dp_sat_liq_dT, dp_sat_liq_exp_dT, p_sat_liq_exp, p_sat_ice } from './thermo.js';
             import { fuelData, Fuel, FuelCell, getEnergySource } from './constants.js';
-            
+            import { checkSAC, getTheta, checkISS, getThetaApprox, getTmin } from './sac.js';
+            import { getTemperatureISA, getAltitudeISA } from './isa.js';   
+
             
             const createSliders = function(fuelObj) {
                 const container = document.getElementById("slidersContainer");
@@ -157,6 +164,7 @@
                                 $(`#${param}Value`).val(ui.value);
                                 fuelObj.updateUserParam(param, ui.value);
                                 updateMixingLine(fuelObj.evaluateSlope());  // Update the mixing line
+                                updateTlimLines();
                             }
                         });
                     }
@@ -180,9 +188,7 @@
                 slope = fuel.evaluateSlope();
             });
 
-            
-    
-
+        
             function changeFuel(object) {
                 removeSliders();
                 selectedFuel = object.value 
@@ -192,6 +198,7 @@
                 MathJax.typeset();
                 createSliders(fuel);
                 updateMixingLine();
+                updateTlimLines();
             }
 
             document.addEventListener('DOMContentLoaded', function() {
@@ -201,46 +208,32 @@
             });
 
             function updateMixingSlope() {
-                //slope = fuel.evaluateSlope();
-                //console.log(slope);
-
                 updateMixingLine(fuel.evaluateSlope());
             }
-            
-            // from : https://stackoverflow.com/questions/33367226/javascript-implementation-of-newton-vs-bisection
-            function bisection (func, interval, eps) {
-                var xLo = interval[0];
-                var xHi = interval[1];
-              
+            /**
+             * 
+             * @param {float} slope - Slope of the mixing line in Pa / K
+             * @param {float} min_pressure - Minimum pressure in Pa to obtain the mixing line for
+             * @param {float} max_pressure - Maximum pressure in Pa to obtain the mixing line for
+             * @returns 
+             */
+            export const getLimitingMixingLine = function(slope, min_pressure = 0, max_pressure = 50) {
+                var theta = getTheta(slope);
+                var theta_p = p_sat_liq(theta);
 
-                fHi = func(xHi);  // fb
-                fLo = func(xLo); // fa
+                var limitingMixingData = [];
 
-                if (fLo * fHi > 0)
-                    return undefined;
-
-                var xMid, fHi, fLo, fMid;
-                var iter = 0;
-                while (xHi - xLo > eps) {
-                    ++iter;
-                    xMid = (xLo+xHi)/2;
-                    fMid = func(xMid);  // fc
-
-                    if (Math.abs(fMid) < eps)
-                        return [xMid, iter];
-
-                    else if (fMid*fLo < 0) { // fa*fc < 0 --> [a,c]
-                        xHi = xMid;
-                        fHi = fMid;
-                    } else {  // fc*fb < 0 --> [c,b]
-                        xLo = xMid;
-                        fLo = fMid;
+                tempValues.forEach(T => {
+                    var p_h2o_temp = theta_p + (T - theta) * slope;
+                    if ((p_h2o_temp > min_pressure) && (p_h2o_temp < max_pressure)) {
+                        limitingMixingData.push({"temperature" : T,
+                        "pressure" : p_h2o_temp});
                     }
-                }
-                
-                return [(xLo+xHi)/2, iter];
-            }
+                });
+                return limitingMixingData;
 
+            }
+            
             var width = 400;
             var height = 400;
             var margin = {left : 50, right : 50, top : 50, bottom : 50};
@@ -258,55 +251,13 @@
 
             
 
-            var svg = d3.select("#d3-col")
+            var svg = d3.select("#d3-col-sac")
                         .append("svg")
                         .attr("width", width)
                         .attr("height", height)
                         .style("overflow", "visible");
 
-            var checkSAC = function (slope) {
-                
-                
-                var interval =  [ambient_temperature, 250];
-                var T_max_RH = bisection(x => slope - dp_sat_liq_exp_dT(x) * (ambient_pressure_h2o + slope * (x - ambient_temperature)),
-                            interval, 1e-12);
-                
-                if (T_max_RH === undefined) {
-                    return false;
-                }
-                T_max_RH = T_max_RH[0];
-                
-                var max_RH = (ambient_pressure_h2o + slope * (T_max_RH - ambient_temperature)) / p_sat_liq(T_max_RH);
-
-                return (max_RH > 1);
-            }
-
-            var getTheta = function(slope) {
-                var interval =  [min_temp, 500];
-                var T_max_RH = bisection(x => slope - dp_sat_liq_dT(x),
-                            interval, 1e-12);
-                
-                return T_max_RH[0];
-            }
-            var getLimitingMixingLine = function(slope) {
-                var theta = getTheta(slope);
-                var theta_p = p_sat_liq(theta);
-
-                var limitingMixingData = [];
-
-                tempValues.forEach(T => {
-                    var p_h2o_temp = theta_p + (T - theta) * slope;
-                    if ((p_h2o_temp > min_pressure) && (p_h2o_temp < max_pressure)) {
-                        limitingMixingData.push({"temperature" : T,
-                        "pressure" : p_h2o_temp});
-
-                
-                    }
-                    
-                });
-                return limitingMixingData;
-
-            }
+      
             var updateLimitingMixingLine = function (slope) {
                 var dat = getLimitingMixingLine(slope);
                 svg.selectAll(".limiting-mixing-line")
@@ -331,14 +282,7 @@
                     .style("stroke-dasharray", "1");
 
             }
-
             
-
-            var checkISS = function (){
-                var RH_ice = ambient_pressure_h2o / p_sat_ice(ambient_temperature);
-
-                return (RH_ice > 1);
-            }
             
             var max_temp = 250;
             var min_temp = 200;
@@ -487,6 +431,29 @@
            
     
             drawLimitingMixingLine(slope);
+
+            var updateTlimLines = function() {
+                T_lim_data = [];
+                pres_data.forEach(p => {
+                    T_lim_data.push({"Tmax" : getThetaApprox(fuel.evaluateSlope(p)),
+                                "Tmin" : getTmin(fuel.evaluateSlope(p)),
+                                "pressure" : p});
+                });
+                
+                svg_sad.selectAll(".Tmaxline")
+                    .datum(T_lim_data)
+                    .attr("d", Tmax_line)
+                    .attr("fill", "none")
+                    .attr("stroke", "red");
+                svg_sad.selectAll(".Tminline")
+                    .datum(T_lim_data)
+                    .attr("d", Tmin_line)
+                    .attr("fill", "none")
+                    .attr("stroke", "red")
+                    .style("stroke-dasharray", "1");
+                    
+
+            };
             
             var updateMixingLine = function () {
                 svg.select(".current-temperature")
@@ -508,8 +475,8 @@
                         }
                 );
 
-                var SAC = checkSAC(slope);
-                var ISS = checkISS();
+                var SAC = checkSAC(slope, ambient_temperature, ambient_pressure_h2o);
+                var ISS = checkISS(ambient_temperature, ambient_pressure_h2o);
                 var color = "black"
                 var labelText = "No contrail";
 
@@ -707,8 +674,93 @@
                 }
 
             responsivefy(svg);
+            
 
-       
+            var svg_sad = d3.select("#d3-col-sad")
+                        .append("svg")
+                        .attr("width", width)
+                        .attr("height", height)
+                        .style("overflow", "visible");
+
+            var xScale_sad = d3.scaleLinear().domain([210, 310]).range([margin.left, width - margin.right]);
+
+            var yScale_sad = d3.scaleLinear().domain([1000, 100]).range([height-margin.bottom, margin.top]);
+            
+            var xAxis_sad = d3.axisBottom().scale(xScale_sad);
+            var yAxis_sad = d3.axisLeft().scale(yScale_sad);
+            
+            var xAxis_physical_sad = svg_sad.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate(0," + (height-margin.bottom) +")")
+                .call(xAxis_sad);
+
+            var yAxis_physical = svg_sad.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate("+margin.bottom+",0)")
+                .call(yAxis_sad);
+
+            svg_sad.append("text")
+                .text("Temperature, Kelvin")
+                .attr("class", "axislabel")
+                .attr("transform", "translate(0," + height +")")
+                .attr("x", width/2)
+                .attr("y", -margin.left/3)
+                .style("text-anchor", "middle");
+
+            svg_sad.append("text")
+                .text("Pressure, hPa")
+                .attr("class", "axislabel")
+                .attr("transform", "rotate(-90)")
+                .attr("y", margin.bottom/4)
+                .attr("x", -(height-margin.bottom)/2)
+                .style("text-anchor", "middle");
+
+            var ISA_data = [];
+            var T_lim_data = [];
+            var pres_data = d3.range(1000, 100, -1);
+            pres_data.forEach(p => {
+                ISA_data.push({"temperature" : getTemperatureISA(getAltitudeISA(p * 100)),
+                                "pressure" : p});
+                T_lim_data.push({"Tmax" : getThetaApprox(fuel.evaluateSlope(p)),
+                                "Tmin" : getTmin(fuel.evaluateSlope(p)),
+                                "pressure" : p});
+
+            });
+
+            var ISA_line = d3.line()
+                .x(d => xScale_sad(d.temperature))
+                .y(d => yScale_sad(d.pressure));
+            var Tmax_line = d3.line()
+                .x(d => xScale_sad(d.Tmax))
+                .y(d => yScale_sad(d.pressure));
+            var Tmin_line = d3.line()
+                .x(d => xScale_sad(d.Tmin))
+                .y(d => yScale_sad(d.pressure));
+            
+
+            svg_sad.append("path")
+                .datum(ISA_data)
+                .attr("d", ISA_line)
+                .attr("fill", "none")
+                .attr("stroke", "black");
+
+            svg_sad.append("path")
+                .datum(T_lim_data)
+                .attr("d", Tmax_line)
+                .attr("fill", "none")
+                .attr("stroke", "red")
+                .attr("class", "Tmaxline");
+
+            svg_sad.append("path")
+                .datum(T_lim_data)
+                .attr("d", Tmin_line)
+                .attr("fill", "none")
+                .attr("stroke", "red")
+                .attr("class", "Tminline")
+                .style("stroke-dasharray", "1");
+
+
+            responsivefy(svg_sad);
 
 		</script>
 	</body>
