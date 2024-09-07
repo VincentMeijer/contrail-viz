@@ -475,8 +475,8 @@
                         }
                 );
 
-                var SAC = checkSAC(slope);
-                var ISS = checkISS();
+                var SAC = checkSAC(slope, ambient_temperature, ambient_pressure_h2o);
+                var ISS = checkISS(ambient_temperature, ambient_pressure_h2o);
                 var color = "black"
                 var labelText = "No contrail";
 
