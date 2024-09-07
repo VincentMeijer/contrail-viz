@@ -682,7 +682,7 @@
                         .attr("height", height)
                         .style("overflow", "visible");
 
-            var xScale_sad = d3.scaleLinear().domain([210, 300]).range([margin.left, width - margin.right]);
+            var xScale_sad = d3.scaleLinear().domain([210, 310]).range([margin.left, width - margin.right]);
 
             var yScale_sad = d3.scaleLinear().domain([1000, 100]).range([height-margin.bottom, margin.top]);
             
@@ -711,7 +711,7 @@
                 .text("Pressure, hPa")
                 .attr("class", "axislabel")
                 .attr("transform", "rotate(-90)")
-                .attr("y",margin.bottom/2)
+                .attr("y", margin.bottom/4)
                 .attr("x", -(height-margin.bottom)/2)
                 .style("text-anchor", "middle");
 
