@@ -758,7 +758,54 @@
                 .attr("stroke", "red")
                 .attr("class", "Tminline")
                 .style("stroke-dasharray", "1");
+            
+            // Add legend
 
+            svg_sad.append("line")
+                .attr("x1", 0.8 * width)
+                .attr("x2", 0.85 * width)
+                .attr("y1", 0.1 * height)
+                .attr("y2", 0.1 * height)
+                .attr("stroke", "black");
+            svg_sad.append("text")
+                .attr("text-anchor", "end")
+                .attr("dominant-baseline", "central")
+                .text("International standard atmosphere")
+                .attr("x", 0.75 * width)
+                .attr("y", 0.1 * height)
+                .style("font-size", 10);
+
+            svg_sad.append("line")
+                .attr("x1", 0.8 * width)
+                .attr("x2", 0.85 * width)
+                .attr("y1", 0.15 * height)
+                .attr("y2", 0.15 * height)
+                .attr("stroke", "red");
+            svg_sad.append("text")
+                .attr("text-anchor", "end")
+                .attr("dominant-baseline", "central")
+                .text("Maximum temperature")
+                .attr("x", 0.75 * width)
+                .attr("y", 0.15 * height)
+                .style("font-size", 10);
+
+            svg_sad.append("line")
+                .attr("x1", 0.8 * width)
+                .attr("x2", 0.85 * width)
+                .attr("y1", 0.2 * height)
+                .attr("y2", 0.2 * height)
+                .attr("stroke", "red")
+                .style("stroke-dasharray", "1");
+            svg_sad.append("text")
+                .attr("text-anchor", "end")
+                .attr("dominant-baseline", "central")
+                .text("Minimum temperature")
+                .attr("x", 0.75 * width)
+                .attr("y", 0.2 * height)
+                .style("font-size", 10);
+            
+
+            
 
             responsivefy(svg_sad);
 
