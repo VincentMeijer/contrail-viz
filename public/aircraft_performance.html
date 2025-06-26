@@ -276,6 +276,10 @@
                             slide: function(event, ui) {
                                 $(`#${param}Value`).val(ui.value);
                                 aircraftParams[param].value = ui.value;
+                                
+                                // Switch dropdown to "Custom" when slider is modified
+                                document.getElementById('aircraftSelect').value = 'custom';
+                                
                                 updatePlots();
                             }
                         });
