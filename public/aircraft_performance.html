@@ -71,6 +71,15 @@
                     <h4>Aircraft Parameters</h4>
                     <p>Drag polar: $C_D = C_{D,0} + KC_L^2$</p>
                     
+                    <div style="margin-bottom: 20px;">
+                        <label for="aircraftSelect">Select Aircraft:</label>
+                        <select id="aircraftSelect" class="form-select">
+                            <option value="custom">Custom</option>
+                            <option value="A320">Airbus A320</option>
+                            <option value="A380">Airbus A380</option>
+                        </select>
+                    </div>
+                    
                     <div id="slidersContainer"></div>
                     
                     <h5>Current State</h5>
@@ -115,6 +124,68 @@
                 mass: { value: 50, min: 10, max: 200, step: 1 }, // Mass in metric tonnes
                 CLmax: { value: 2.0, min: 0.5, max: 3.0, step: 0.1 } // Maximum lift coefficient
             };
+
+            // Aircraft database
+            const aircraftData = {
+                A320: {
+                    name: "Airbus A320",
+                    CD0: 0.022,
+                    K: 0.085,
+                    S: 122.6, // m²
+                    mass: 78.0, // tonnes
+                    CLmax: 2.2
+                },
+                A380: {
+                    name: "Airbus A380",
+                    CD0: 0.025,
+                    K: 0.075,
+                    S: 845.0, // m²
+                    mass: 560.0, // tonnes
+                    CLmax: 2.1
+                }
+            };
+
+            // Function to update aircraft parameters
+            function updateAircraftParams(aircraftType) {
+                if (aircraftType === 'custom') {
+                    return; // Keep current values
+                }
+                
+                const aircraft = aircraftData[aircraftType];
+                if (!aircraft) {
+                    console.error(`Aircraft ${aircraftType} not found`);
+                    return;
+                }
+                
+                // Update parameter values
+                aircraftParams.CD0.value = aircraft.CD0;
+                aircraftParams.K.value = aircraft.K;
+                aircraftParams.S.value = aircraft.S;
+                aircraftParams.mass.value = aircraft.mass;
+                aircraftParams.CLmax.value = aircraft.CLmax;
+                
+                // Update slider values and displays
+                updateSlidersFromParams();
+                
+                // Update plots
+                updatePlots();
+            }
+
+            // Function to update sliders from current parameters
+            function updateSlidersFromParams() {
+                for (const param in aircraftParams) {
+                    if (aircraftParams.hasOwnProperty(param)) {
+                        const paramData = aircraftParams[param];
+                        const slider = $(`#${param}Slider`);
+                        const valueDisplay = $(`#${param}Value`);
+                        
+                        if (slider.length && valueDisplay.length) {
+                            slider.slider('value', paramData.value);
+                            valueDisplay.val(paramData.value);
+                        }
+                    }
+                }
+            }
 
             // Current state
             let currentCL = 0.5;
@@ -567,6 +638,11 @@
                 createSliders();
                 initializePlots();
                 MathJax.typeset();
+                
+                // Add event listener for aircraft selection
+                document.getElementById('aircraftSelect').addEventListener('change', function() {
+                    updateAircraftParams(this.value);
+                });
             });
 
             // Make plots responsive
