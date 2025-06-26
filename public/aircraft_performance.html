@@ -112,7 +112,8 @@
                 CD0: { value: 0.02, min: 0.005, max: 0.05, step: 0.001 },
                 K: { value: 0.08, min: 0.01, max: 0.2, step: 0.001 },
                 S: { value: 100, min: 20, max: 500, step: 1 },
-                mass: { value: 50, min: 10, max: 200, step: 1 } // Mass in metric tonnes
+                mass: { value: 50, min: 10, max: 200, step: 1 }, // Mass in metric tonnes
+                CLmax: { value: 2.0, min: 0.5, max: 3.0, step: 0.1 } // Maximum lift coefficient
             };
 
             // Current state
@@ -122,6 +123,25 @@
             // Constants for EAS range
             const MIN_EAS = 30;
             const MAX_EAS = 300;
+
+            // Get current CL range based on CLmax and EAS range
+            function getCLRange() {
+                const CLmax = aircraftParams.CLmax.value;
+                const EASRange = getEASRange();
+                const maxEAS = EASRange[1];
+                
+                // Calculate minimum CL based on maximum EAS
+                const minCL = calculateCL(maxEAS, getWeight());
+                
+                return [Math.max(0, minCL), CLmax];
+            }
+
+            // Get current EAS range based on CLmax
+            function getEASRange() {
+                const CLmax = aircraftParams.CLmax.value;
+                const minEAS = calculateEAS(CLmax, getWeight());
+                return [Math.max(MIN_EAS, minEAS), MAX_EAS];
+            }
 
             // Convert mass in tonnes to weight in Newtons
             function getWeight() {
@@ -138,7 +158,8 @@
                     CD0: "$C_{D,0}$",
                     K: "$K$",
                     S: "Wing area (m²)",
-                    mass: "Mass (tonnes)"
+                    mass: "Mass (tonnes)",
+                    CLmax: "$C_{L,max}$"
                 };
 
                 for (const param in aircraftParams) {
@@ -260,14 +281,14 @@
                 .attr("width", width - margin.left - margin.right)
                 .attr("height", height - margin.top - margin.bottom);
 
-            const xScaleDragPolar = d3.scaleLinear().domain([0, 2]).range([margin.left, width - margin.right]);
+            const xScaleDragPolar = d3.scaleLinear().domain(getCLRange()).range([margin.left, width - margin.right]);
             const yScaleDragPolar = d3.scaleLinear().domain([0, 0.3]).range([height - margin.bottom, margin.top]);
 
             const xAxisDragPolar = d3.axisBottom().scale(xScaleDragPolar);
             const yAxisDragPolar = d3.axisLeft().scale(yScaleDragPolar);
 
             svgDragPolar.append("g")
-                .attr("class", "axis")
+                .attr("class", "x-axis")
                 .attr("transform", "translate(0," + (height - margin.bottom) + ")")
                 .call(xAxisDragPolar);
 
@@ -308,14 +329,14 @@
                 .attr("width", width - margin.left - margin.right)
                 .attr("height", height - margin.top - margin.bottom);
 
-            const xScaleThrust = d3.scaleLinear().domain([MIN_EAS, MAX_EAS]).range([margin.left, width - margin.right]);
+            const xScaleThrust = d3.scaleLinear().domain(getEASRange()).range([margin.left, width - margin.right]);
             const yScaleThrust = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
 
             const xAxisThrust = d3.axisBottom().scale(xScaleThrust);
             const yAxisThrust = d3.axisLeft().scale(yScaleThrust);
 
             svgThrust.append("g")
-                .attr("class", "axis")
+                .attr("class", "x-axis")
                 .attr("transform", "translate(0," + (height - margin.bottom) + ")")
                 .call(xAxisThrust);
 
@@ -343,7 +364,8 @@
             // Generate drag polar data
             function generateDragPolarData() {
                 const data = [];
-                for (let CL = 0; CL <= 2; CL += 0.01) {
+                const CLRange = getCLRange();
+                for (let CL = CLRange[0]; CL <= CLRange[1]; CL += 0.01) {
                     const CD = calculateCD(CL);
                     data.push({
                         CL: CL,
@@ -356,7 +378,8 @@
             // Generate thrust required data
             function generateThrustData() {
                 const data = [];
-                for (let EAS = MIN_EAS; EAS <= MAX_EAS; EAS += 1) {
+                const EASRange = getEASRange();
+                for (let EAS = EASRange[0]; EAS <= EASRange[1]; EAS += 1) {
                     const thrust = calculateThrustRequired(EAS, getWeight());
                     data.push({
                         speed: EAS,
@@ -475,7 +498,8 @@
             }
 
             function draggingDragPolar(d) {
-                const newCL = Math.max(0, Math.min(2, xScaleDragPolar.invert(d3.event.x)));
+                const CLRange = getCLRange();
+                const newCL = Math.max(CLRange[0], Math.min(CLRange[1], xScaleDragPolar.invert(d3.event.x)));
                 currentCL = newCL;
                 
                 // Ensure the calculated CD is within the plot bounds
@@ -506,12 +530,14 @@
             }
 
             function draggingThrust(d) {
-                const newEAS = Math.max(MIN_EAS, Math.min(MAX_EAS, xScaleThrust.invert(d3.event.x)));
+                const EASRange = getEASRange();
+                const newEAS = Math.max(EASRange[0], Math.min(EASRange[1], xScaleThrust.invert(d3.event.x)));
                 currentSpeed = newEAS;
                 
                 // Calculate corresponding CL and ensure it's within bounds
                 currentCL = calculateCL(newEAS, getWeight());
-                currentCL = Math.max(0, Math.min(2, currentCL));
+                const CLRange = getCLRange();
+                currentCL = Math.max(CLRange[0], Math.min(CLRange[1], currentCL));
                 
                 // Ensure the calculated thrust is within the plot bounds
                 const calculatedThrust = calculateThrustRequired(newEAS, getWeight());
@@ -595,22 +621,36 @@
             function updatePlotScales() {
                 const dragPolarYLimit = calculateDragPolarYLimit();
                 const thrustYLimit = calculateThrustYLimit();
+                const CLRange = getCLRange();
+                const EASRange = getEASRange();
                 
-                // Update drag polar y-scale
+                // Update drag polar scales
+                xScaleDragPolar.domain(CLRange);
                 yScaleDragPolar.domain([0, dragPolarYLimit]);
                 
-                // Update thrust plot y-scale
+                // Update thrust plot scales
+                xScaleThrust.domain(EASRange);
                 yScaleThrust.domain([0, thrustYLimit]);
                 
-                // Remove old y-axis and redraw for drag polar
+                // Remove old axes and redraw for drag polar
                 svgDragPolar.selectAll(".y-axis").remove();
+                svgDragPolar.selectAll(".x-axis").remove();
+                svgDragPolar.append("g")
+                    .attr("class", "x-axis")
+                    .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+                    .call(d3.axisBottom().scale(xScaleDragPolar));
                 svgDragPolar.append("g")
                     .attr("class", "y-axis")
                     .attr("transform", "translate(" + margin.left + ",0)")
                     .call(d3.axisLeft().scale(yScaleDragPolar));
                 
-                // Remove old y-axis and redraw for thrust plot
+                // Remove old axes and redraw for thrust plot
                 svgThrust.selectAll(".y-axis").remove();
+                svgThrust.selectAll(".x-axis").remove();
+                svgThrust.append("g")
+                    .attr("class", "x-axis")
+                    .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+                    .call(d3.axisBottom().scale(xScaleThrust));
                 svgThrust.append("g")
                     .attr("class", "y-axis")
                     .attr("transform", "translate(" + margin.left + ",0)")
