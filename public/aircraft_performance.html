@@ -83,7 +83,7 @@
                         <input type="text" id="currentCD" readonly style="border:0;">
                     </p>
                     <p>
-                        <label for="currentSpeed">Current Speed (m/s):</label>
+                        <label for="currentSpeed">Equivalent Airspeed (m/s):</label>
                         <input type="text" id="currentSpeed" readonly style="border:0;">
                     </p>
                     <p>
@@ -112,39 +112,65 @@
                 CD0: { value: 0.02, min: 0.005, max: 0.05, step: 0.001 },
                 K: { value: 0.08, min: 0.01, max: 0.2, step: 0.001 },
                 S: { value: 100, min: 20, max: 500, step: 1 },
-                rho: { value: 1.225, min: 0.5, max: 2.0, step: 0.01 },
-                weight: { value: 50000, min: 10000, max: 200000, step: 1000 }
+                mass: { value: 50, min: 10, max: 200, step: 1 } // Mass in metric tonnes
             };
 
             // Current state
             let currentCL = 0.5;
             let currentSpeed = 100;
 
+            // Convert mass in tonnes to weight in Newtons
+            function getWeight() {
+                const g = 9.81; // Gravitational acceleration in m/s²
+                return aircraftParams.mass.value * 1000 * g; // Convert tonnes to kg, then to N
+            }
+
             const createSliders = function() {
                 const container = document.getElementById("slidersContainer");
                 container.innerHTML = "";
+
+                // Define proper labels for each parameter
+                const paramLabels = {
+                    CD0: "$C_{D,0}$",
+                    K: "$K$",
+                    S: "Wing area (m²)",
+                    mass: "Mass (tonnes)"
+                };
 
                 for (const param in aircraftParams) {
                     if (aircraftParams.hasOwnProperty(param)) {
                         const paramData = aircraftParams[param];
 
+                        // Create a container div for each parameter
+                        const paramContainer = document.createElement("div");
+                        paramContainer.style.marginBottom = "15px";
+                        paramContainer.style.display = "flex";
+                        paramContainer.style.alignItems = "center";
+                        paramContainer.style.gap = "10px";
+
                         const label = document.createElement("label");
                         label.for = `${param}Slider`;
-                        label.textContent = `${param}: `;
+                        label.textContent = paramLabels[param];
+                        label.style.minWidth = "120px";
+                        label.style.marginBottom = "0";
 
                         const valueDisplay = document.createElement("input");
                         valueDisplay.type = "text";
                         valueDisplay.id = `${param}Value`;
                         valueDisplay.readOnly = true;
                         valueDisplay.style.border = "0";
+                        valueDisplay.style.width = "60px";
+                        valueDisplay.style.textAlign = "right";
                         valueDisplay.value = paramData.value;
 
                         const sliderDiv = document.createElement("div");
                         sliderDiv.id = `${param}Slider`;
+                        sliderDiv.style.flex = "1";
 
-                        container.appendChild(label);
-                        container.appendChild(valueDisplay);
-                        container.appendChild(sliderDiv);
+                        paramContainer.appendChild(label);
+                        paramContainer.appendChild(sliderDiv);
+                        paramContainer.appendChild(valueDisplay);
+                        container.appendChild(paramContainer);
 
                         $(`#${param}Slider`).slider({
                             min: paramData.min,
@@ -168,36 +194,44 @@
 
             // Calculate lift coefficient from speed and weight
             function calculateCL(speed, weight) {
-                const rho = aircraftParams.rho.value;
+                const rho = 1.225; // Fixed sea level density
                 const S = aircraftParams.S.value;
                 return (2 * weight) / (rho * speed * speed * S);
             }
 
-            // Calculate speed from lift coefficient and weight
-            function calculateSpeed(CL, weight) {
-                const rho = aircraftParams.rho.value;
+            // Calculate equivalent airspeed from lift coefficient and weight
+            function calculateEAS(CL, weight) {
+                const rho = 1.225; // Fixed sea level density
                 const S = aircraftParams.S.value;
+                // This is already equivalent airspeed since we're using sea level density
                 return Math.sqrt((2 * weight) / (rho * CL * S));
             }
 
-            // Calculate thrust required
-            function calculateThrustRequired(speed, weight) {
-                const CL = calculateCL(speed, weight);
+            // Calculate true airspeed from equivalent airspeed and density ratio
+            function calculateTAS(EAS, rho_altitude) {
+                const rho_sl = 1.225; // Sea level density
+                return EAS * Math.sqrt(rho_sl / rho_altitude);
+            }
+
+            // Calculate thrust required using equivalent airspeed
+            function calculateThrustRequired(EAS, weight) {
+                const CL = calculateCL(EAS, weight);
                 const CD = calculateCD(CL);
-                const rho = aircraftParams.rho.value;
+                const rho = 1.225; // Fixed sea level density
                 const S = aircraftParams.S.value;
-                return 0.5 * rho * speed * speed * S * CD / 1000;
+                // Return thrust in kN instead of N
+                return 0.5 * rho * EAS * EAS * S * CD / 1000;
             }
 
             // Update current state displays
             function updateCurrentState() {
                 const CD = calculateCD(currentCL);
-                const speed = calculateSpeed(currentCL, aircraftParams.weight.value);
-                const thrust = calculateThrustRequired(speed, aircraftParams.weight.value);
+                const EAS = calculateEAS(currentCL, getWeight());
+                const thrust = calculateThrustRequired(EAS, getWeight());
                 
                 document.getElementById('currentCL').value = currentCL.toFixed(3);
                 document.getElementById('currentCD').value = CD.toFixed(4);
-                document.getElementById('currentSpeed').value = speed.toFixed(1);
+                document.getElementById('currentSpeed').value = EAS.toFixed(1);
                 document.getElementById('currentThrust').value = thrust.toFixed(1);
             }
 
@@ -270,7 +304,7 @@
                 .attr("width", width - margin.left - margin.right)
                 .attr("height", height - margin.top - margin.bottom);
 
-            const xScaleThrust = d3.scaleLinear().domain([50, 200]).range([margin.left, width - margin.right]);
+            const xScaleThrust = d3.scaleLinear().domain([30, 200]).range([margin.left, width - margin.right]);
             const yScaleThrust = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
 
             const xAxisThrust = d3.axisBottom().scale(xScaleThrust);
@@ -287,7 +321,7 @@
                 .call(yAxisThrust);
 
             svgThrust.append("text")
-                .text("Speed, m/s")
+                .text("Equivalent Airspeed, m/s")
                 .attr("class", "axislabel")
                 .attr("transform", "translate(0," + height + ")")
                 .attr("x", width / 2)
@@ -321,12 +355,12 @@
             // Generate thrust required data
             function generateThrustData() {
                 const data = [];
-                for (let speed = 50; speed <= 200; speed += 1) {
-                    const thrust = calculateThrustRequired(speed, aircraftParams.weight.value);
+                for (let EAS = 30; EAS <= 200; EAS += 1) {
+                    const thrust = calculateThrustRequired(EAS, getWeight());
                     // Only include points within the plot bounds (now in kN)
                     if (thrust <= 100) {
                         data.push({
-                            speed: speed,
+                            speed: EAS,
                             thrust: thrust
                         });
                     }
@@ -373,10 +407,10 @@
                     .attr("cy", yScaleDragPolar(currentCD));
 
                 // Update current point on thrust plot
-                const currentSpeed = calculateSpeed(currentCL, aircraftParams.weight.value);
-                const currentThrust = calculateThrustRequired(currentSpeed, aircraftParams.weight.value);
+                const currentEAS = calculateEAS(currentCL, getWeight());
+                const currentThrust = calculateThrustRequired(currentEAS, getWeight());
                 svgThrust.selectAll(".current-point")
-                    .attr("cx", xScaleThrust(currentSpeed))
+                    .attr("cx", xScaleThrust(currentEAS))
                     .attr("cy", yScaleThrust(currentThrust));
 
                 updateCurrentState();
@@ -447,10 +481,10 @@
                 d3.select(this).attr("cy", yScaleDragPolar(calculateCD(currentCL)));
                 
                 // Update thrust plot point
-                const currentSpeed = calculateSpeed(currentCL, aircraftParams.weight.value);
-                const currentThrust = calculateThrustRequired(currentSpeed, aircraftParams.weight.value);
+                const currentEAS = calculateEAS(currentCL, getWeight());
+                const currentThrust = calculateThrustRequired(currentEAS, getWeight());
                 svgThrust.selectAll(".current-point")
-                    .attr("cx", xScaleThrust(currentSpeed))
+                    .attr("cx", xScaleThrust(currentEAS))
                     .attr("cy", yScaleThrust(currentThrust));
                 
                 updateCurrentState();
@@ -466,15 +500,15 @@
             }
 
             function draggingThrust(d) {
-                const newSpeed = Math.max(50, Math.min(200, xScaleThrust.invert(d3.event.x)));
-                currentSpeed = newSpeed;
+                const newEAS = Math.max(30, Math.min(200, xScaleThrust.invert(d3.event.x)));
+                currentSpeed = newEAS;
                 
                 // Calculate corresponding CL
-                currentCL = calculateCL(currentSpeed, aircraftParams.weight.value);
+                currentCL = calculateCL(newEAS, getWeight());
                 currentCL = Math.max(0, Math.min(2, currentCL));
                 
-                d3.select(this).attr("cx", xScaleThrust(currentSpeed));
-                d3.select(this).attr("cy", yScaleThrust(calculateThrustRequired(currentSpeed, aircraftParams.weight.value)));
+                d3.select(this).attr("cx", xScaleThrust(newEAS));
+                d3.select(this).attr("cy", yScaleThrust(calculateThrustRequired(newEAS, getWeight())));
                 
                 // Update drag polar point
                 svgDragPolar.selectAll(".current-point")
