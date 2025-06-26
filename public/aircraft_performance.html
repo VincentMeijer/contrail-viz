@@ -94,13 +94,13 @@
         
                 <!-- Drag Polar Visualization -->
                 <div class="col-md-5" id="d3-col-drag-polar">
-                    <h4>Drag Polar</h4>
+                    <h4 style="text-align: center; margin-bottom: 10px;">Drag Polar</h4>
                     <svg></svg>
                 </div>
                 
                 <!-- Thrust Required Visualization -->
                 <div class="col-md-5" id="d3-col-thrust">
-                    <h4>Thrust Required vs Speed</h4>
+                    <h4 style="text-align: center; margin-bottom: 10px;">Thrust Required vs Speed</h4>
                     <svg></svg>
                 </div>
             </div>
@@ -242,7 +242,7 @@
             // Visualization setup
             const width = 400;
             const height = 400;
-            const margin = {left: 60, right: 50, top: 50, bottom: 50};
+            const margin = {left: 60, right: 50, top: 20, bottom: 50};
 
             // Drag Polar Plot
             const svgDragPolar = d3.select("#d3-col-drag-polar svg")
