@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Aircraft Performance Visualization</title>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.5.0/d3.min.js" integrity="sha512-JcFoojcQ0rbfND1k7MUi73RwOdhE79qQiFiflXpMr++I9r30gJB+sZkhKZCW1Pee6poQrTgiQPfzhgiBwGhHEA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+        <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+        <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+        <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+        </script>
+        <script>
+            MathJax = {
+              tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+            };
+        </script>
+		<style type="text/css">
+            html, body, #main-container {
+                height: 100%;
+            }
+
+            rect {
+                -moz-transition: all 0.25s;
+                -o-transition: all 0.25s;
+                -webkit-transition: all 0.25s;
+                transition: all 0.25s;
+            }
+			rect.hover {
+                fill : "orange";
+            }	
+            .axislabel{
+                font-size:15px;
+                line-height:18px;
+                font-family:Helvetica;
+                font-weight: bold;
+            }
+
+            #main-container {
+                padding-top: 80px;
+            }
+            #custom-handle {
+                width: 2em;
+                height: 1.6em;
+                top: 50%;
+                margin-top: -.8em;
+                text-align: center;
+                line-height: 1.6em;
+            }
+		</style>
+        <script src="thermo.js" type="module"></script>
+        <script src="constants.js" type="module"></script>
+	</head>
+	<body>
+        <!-- Navbar content -->
+        <nav class="navbar navbar-expand-sm navbar-light bg-dark fixed-top">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <p style="color:white">Aircraft Performance Analysis</p>
+                </a>
+                <p style="text-align: right; color:white; padding-right:50px;"> Vincent R. Meijer &copy; 2023</p>
+            </div>
+        </nav>
+
+        <div class="container-fluid h-100" id="main-container">
+            <div class="row h-100">
+                <!-- Controls column -->
+                <div class="col-md-2" id="controls-col">
+                    <h4>Aircraft Parameters</h4>
+                    <p>Drag polar: $C_D = C_{D,0} + KC_L^2$</p>
+                    
+                    <div id="slidersContainer"></div>
+                    
+                    <h5>Current State</h5>
+                    <p>
+                        <label for="currentCL">Current C<sub>L</sub>:</label>
+                        <input type="text" id="currentCL" readonly style="border:0;">
+                    </p>
+                    <p>
+                        <label for="currentCD">Current C<sub>D</sub>:</label>
+                        <input type="text" id="currentCD" readonly style="border:0;">
+                    </p>
+                    <p>
+                        <label for="currentSpeed">Current Speed (m/s):</label>
+                        <input type="text" id="currentSpeed" readonly style="border:0;">
+                    </p>
+                    <p>
+                        <label for="currentThrust">Thrust Required (N):</label>
+                        <input type="text" id="currentThrust" readonly style="border:0;">
+                    </p>
+                </div>
+        
+                <!-- Drag Polar Visualization -->
+                <div class="col-md-5" id="d3-col-drag-polar">
+                    <h4>Drag Polar</h4>
+                    <svg></svg>
+                </div>
+                
+                <!-- Thrust Required Visualization -->
+                <div class="col-md-5" id="d3-col-thrust">
+                    <h4>Thrust Required vs Speed</h4>
+                    <svg></svg>
+                </div>
+            </div>
+        </div>
+
+		<script type="module">
+            // Aircraft performance parameters
+            const aircraftParams = {
+                CD0: { value: 0.02, min: 0.005, max: 0.05, step: 0.001 },
+                K: { value: 0.08, min: 0.01, max: 0.2, step: 0.001 },
+                S: { value: 100, min: 20, max: 500, step: 1 },
+                rho: { value: 1.225, min: 0.5, max: 2.0, step: 0.01 },
+                weight: { value: 50000, min: 10000, max: 200000, step: 1000 }
+            };
+
+            // Current state
+            let currentCL = 0.5;
+            let currentSpeed = 100;
+
+            const createSliders = function() {
+                const container = document.getElementById("slidersContainer");
+                container.innerHTML = "";
+
+                for (const param in aircraftParams) {
+                    if (aircraftParams.hasOwnProperty(param)) {
+                        const paramData = aircraftParams[param];
+
+                        const label = document.createElement("label");
+                        label.for = `${param}Slider`;
+                        label.textContent = `${param}: `;
+
+                        const valueDisplay = document.createElement("input");
+                        valueDisplay.type = "text";
+                        valueDisplay.id = `${param}Value`;
+                        valueDisplay.readOnly = true;
+                        valueDisplay.style.border = "0";
+                        valueDisplay.value = paramData.value;
+
+                        const sliderDiv = document.createElement("div");
+                        sliderDiv.id = `${param}Slider`;
+
+                        container.appendChild(label);
+                        container.appendChild(valueDisplay);
+                        container.appendChild(sliderDiv);
+
+                        $(`#${param}Slider`).slider({
+                            min: paramData.min,
+                            max: paramData.max,
+                            step: paramData.step,
+                            value: paramData.value,
+                            slide: function(event, ui) {
+                                $(`#${param}Value`).val(ui.value);
+                                aircraftParams[param].value = ui.value;
+                                updatePlots();
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Calculate drag coefficient from lift coefficient
+            function calculateCD(CL) {
+                return aircraftParams.CD0.value + aircraftParams.K.value * CL * CL;
+            }
+
+            // Calculate lift coefficient from speed and weight
+            function calculateCL(speed, weight) {
+                const rho = aircraftParams.rho.value;
+                const S = aircraftParams.S.value;
+                return (2 * weight) / (rho * speed * speed * S);
+            }
+
+            // Calculate speed from lift coefficient and weight
+            function calculateSpeed(CL, weight) {
+                const rho = aircraftParams.rho.value;
+                const S = aircraftParams.S.value;
+                return Math.sqrt((2 * weight) / (rho * CL * S));
+            }
+
+            // Calculate thrust required
+            function calculateThrustRequired(speed, weight) {
+                const CL = calculateCL(speed, weight);
+                const CD = calculateCD(CL);
+                const rho = aircraftParams.rho.value;
+                const S = aircraftParams.S.value;
+                return 0.5 * rho * speed * speed * S * CD;
+            }
+
+            // Update current state displays
+            function updateCurrentState() {
+                const CD = calculateCD(currentCL);
+                const speed = calculateSpeed(currentCL, aircraftParams.weight.value);
+                const thrust = calculateThrustRequired(speed, aircraftParams.weight.value);
+                
+                document.getElementById('currentCL').value = currentCL.toFixed(3);
+                document.getElementById('currentCD').value = CD.toFixed(4);
+                document.getElementById('currentSpeed').value = speed.toFixed(1);
+                document.getElementById('currentThrust').value = thrust.toFixed(0);
+            }
+
+            // Visualization setup
+            const width = 400;
+            const height = 400;
+            const margin = {left: 50, right: 50, top: 50, bottom: 50};
+
+            // Drag Polar Plot
+            const svgDragPolar = d3.select("#d3-col-drag-polar svg")
+                .attr("width", width)
+                .attr("height", height)
+                .style("overflow", "visible");
+
+            const xScaleDragPolar = d3.scaleLinear().domain([0, 2]).range([margin.left, width - margin.right]);
+            const yScaleDragPolar = d3.scaleLinear().domain([0, 0.2]).range([height - margin.bottom, margin.top]);
+
+            const xAxisDragPolar = d3.axisBottom().scale(xScaleDragPolar);
+            const yAxisDragPolar = d3.axisLeft().scale(yScaleDragPolar);
+
+            svgDragPolar.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+                .call(xAxisDragPolar);
+
+            svgDragPolar.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate(" + margin.left + ",0)")
+                .call(yAxisDragPolar);
+
+            svgDragPolar.append("text")
+                .text("Lift Coefficient, C_L")
+                .attr("class", "axislabel")
+                .attr("transform", "translate(0," + height + ")")
+                .attr("x", width / 2)
+                .attr("y", -margin.left / 3)
+                .style("text-anchor", "middle");
+
+            svgDragPolar.append("text")
+                .text("Drag Coefficient, C_D")
+                .attr("class", "axislabel")
+                .attr("transform", "rotate(-90)")
+                .attr("y", margin.bottom / 2)
+                .attr("x", -(height - margin.bottom) / 2)
+                .style("text-anchor", "middle");
+
+            // Thrust Required Plot
+            const svgThrust = d3.select("#d3-col-thrust svg")
+                .attr("width", width)
+                .attr("height", height)
+                .style("overflow", "visible");
+
+            const xScaleThrust = d3.scaleLinear().domain([50, 200]).range([margin.left, width - margin.right]);
+            const yScaleThrust = d3.scaleLinear().domain([0, 100000]).range([height - margin.bottom, margin.top]);
+
+            const xAxisThrust = d3.axisBottom().scale(xScaleThrust);
+            const yAxisThrust = d3.axisLeft().scale(yScaleThrust);
+
+            svgThrust.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+                .call(xAxisThrust);
+
+            svgThrust.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate(" + margin.left + ",0)")
+                .call(yAxisThrust);
+
+            svgThrust.append("text")
+                .text("Speed (m/s)")
+                .attr("class", "axislabel")
+                .attr("transform", "translate(0," + height + ")")
+                .attr("x", width / 2)
+                .attr("y", -margin.left / 3)
+                .style("text-anchor", "middle");
+
+            svgThrust.append("text")
+                .text("Thrust Required (N)")
+                .attr("class", "axislabel")
+                .attr("transform", "rotate(-90)")
+                .attr("y", margin.bottom / 2)
+                .attr("x", -(height - margin.bottom) / 2)
+                .style("text-anchor", "middle");
+
+            // Generate drag polar data
+            function generateDragPolarData() {
+                const data = [];
+                for (let CL = 0; CL <= 2; CL += 0.01) {
+                    data.push({
+                        CL: CL,
+                        CD: calculateCD(CL)
+                    });
+                }
+                return data;
+            }
+
+            // Generate thrust required data
+            function generateThrustData() {
+                const data = [];
+                for (let speed = 50; speed <= 200; speed += 1) {
+                    data.push({
+                        speed: speed,
+                        thrust: calculateThrustRequired(speed, aircraftParams.weight.value)
+                    });
+                }
+                return data;
+            }
+
+            // Line generators
+            const dragPolarLine = d3.line()
+                .x(d => xScaleDragPolar(d.CL))
+                .y(d => yScaleDragPolar(d.CD));
+
+            const thrustLine = d3.line()
+                .x(d => xScaleThrust(d.speed))
+                .y(d => yScaleThrust(d.thrust));
+
+            // Update plots
+            function updatePlots() {
+                const dragPolarData = generateDragPolarData();
+                const thrustData = generateThrustData();
+
+                // Update drag polar
+                svgDragPolar.selectAll(".drag-polar-line")
+                    .datum(dragPolarData)
+                    .attr("d", dragPolarLine)
+                    .attr("fill", "none")
+                    .attr("stroke", "blue")
+                    .attr("stroke-width", 2);
+
+                // Update thrust required
+                svgThrust.selectAll(".thrust-line")
+                    .datum(thrustData)
+                    .attr("d", thrustLine)
+                    .attr("fill", "none")
+                    .attr("stroke", "red")
+                    .attr("stroke-width", 2);
+
+                // Update current point on drag polar
+                const currentCD = calculateCD(currentCL);
+                svgDragPolar.selectAll(".current-point")
+                    .attr("cx", xScaleDragPolar(currentCL))
+                    .attr("cy", yScaleDragPolar(currentCD));
+
+                // Update current point on thrust plot
+                const currentSpeed = calculateSpeed(currentCL, aircraftParams.weight.value);
+                const currentThrust = calculateThrustRequired(currentSpeed, aircraftParams.weight.value);
+                svgThrust.selectAll(".current-point")
+                    .attr("cx", xScaleThrust(currentSpeed))
+                    .attr("cy", yScaleThrust(currentThrust));
+
+                updateCurrentState();
+            }
+
+            // Initialize plots
+            function initializePlots() {
+                const dragPolarData = generateDragPolarData();
+                const thrustData = generateThrustData();
+
+                // Draw drag polar line
+                svgDragPolar.append("path")
+                    .datum(dragPolarData)
+                    .attr("class", "drag-polar-line")
+                    .attr("d", dragPolarLine)
+                    .attr("fill", "none")
+                    .attr("stroke", "blue")
+                    .attr("stroke-width", 2);
+
+                // Draw thrust required line
+                svgThrust.append("path")
+                    .datum(thrustData)
+                    .attr("class", "thrust-line")
+                    .attr("d", thrustLine)
+                    .attr("fill", "none")
+                    .attr("stroke", "red")
+                    .attr("stroke-width", 2);
+
+                // Add current point to drag polar
+                svgDragPolar.append("circle")
+                    .attr("class", "current-point")
+                    .attr("r", 6)
+                    .attr("fill", "orange")
+                    .attr("stroke", "black")
+                    .attr("stroke-width", 2)
+                    .call(d3.drag()
+                        .on("start", dragStartedDragPolar)
+                        .on("drag", draggingDragPolar)
+                        .on("end", dragEndedDragPolar));
+
+                // Add current point to thrust plot
+                svgThrust.append("circle")
+                    .attr("class", "current-point")
+                    .attr("r", 6)
+                    .attr("fill", "orange")
+                    .attr("stroke", "black")
+                    .attr("stroke-width", 2)
+                    .call(d3.drag()
+                        .on("start", dragStartedThrust)
+                        .on("drag", draggingThrust)
+                        .on("end", dragEndedThrust));
+
+                updatePlots();
+            }
+
+            // Drag functions for drag polar
+            function dragStartedDragPolar(d) {
+                d3.select(this).attr("r", 8);
+            }
+
+            function draggingDragPolar(d) {
+                const newCL = Math.max(0, Math.min(2, xScaleDragPolar.invert(d3.event.x)));
+                currentCL = newCL;
+                
+                d3.select(this).attr("cx", xScaleDragPolar(currentCL));
+                d3.select(this).attr("cy", yScaleDragPolar(calculateCD(currentCL)));
+                
+                // Update thrust plot point
+                const currentSpeed = calculateSpeed(currentCL, aircraftParams.weight.value);
+                const currentThrust = calculateThrustRequired(currentSpeed, aircraftParams.weight.value);
+                svgThrust.selectAll(".current-point")
+                    .attr("cx", xScaleThrust(currentSpeed))
+                    .attr("cy", yScaleThrust(currentThrust));
+                
+                updateCurrentState();
+            }
+
+            function dragEndedDragPolar(d) {
+                d3.select(this).attr("r", 6);
+            }
+
+            // Drag functions for thrust plot
+            function dragStartedThrust(d) {
+                d3.select(this).attr("r", 8);
+            }
+
+            function draggingThrust(d) {
+                const newSpeed = Math.max(50, Math.min(200, xScaleThrust.invert(d3.event.x)));
+                currentSpeed = newSpeed;
+                
+                // Calculate corresponding CL
+                currentCL = calculateCL(currentSpeed, aircraftParams.weight.value);
+                currentCL = Math.max(0, Math.min(2, currentCL));
+                
+                d3.select(this).attr("cx", xScaleThrust(currentSpeed));
+                d3.select(this).attr("cy", yScaleThrust(calculateThrustRequired(currentSpeed, aircraftParams.weight.value)));
+                
+                // Update drag polar point
+                svgDragPolar.selectAll(".current-point")
+                    .attr("cx", xScaleDragPolar(currentCL))
+                    .attr("cy", yScaleDragPolar(calculateCD(currentCL)));
+                
+                updateCurrentState();
+            }
+
+            function dragEndedThrust(d) {
+                d3.select(this).attr("r", 6);
+            }
+
+            // Initialize when document is ready
+            $(function() {
+                createSliders();
+                initializePlots();
+                MathJax.typeset();
+            });
+
+            // Make plots responsive
+            function responsivefy(svg) {
+                const container = d3.select(svg.node().parentNode),
+                    width = parseInt(svg.style('width'), 10),
+                    height = parseInt(svg.style('height'), 10),
+                    aspect = width / height;
+                
+                svg.attr('viewBox', `0 0 ${width} ${height}`)
+                    .attr('preserveAspectRatio', 'xMinYMid')
+                    .call(resize);
+                
+                d3.select(window).on(
+                    'resize.' + container.attr('id'), 
+                    resize
+                );
+                
+                function resize() {
+                    const w = parseInt(container.style('width'));
+                    const h = parseInt(container.style("height"));
+                    const minDim = Math.min(w, h);
+                    svg.attr("width", minDim);
+                    svg.attr("height", minDim);
+                }
+            }
+
+            // Make both plots responsive
+            responsivefy(svgDragPolar);
+            responsivefy(svgThrust);
+		</script>
+	</body>
+</html> 
