@@ -87,7 +87,7 @@
                         <input type="text" id="currentSpeed" readonly style="border:0;">
                     </p>
                     <p>
-                        <label for="currentThrust">Thrust Required (N):</label>
+                        <label for="currentThrust">Thrust Required (kN):</label>
                         <input type="text" id="currentThrust" readonly style="border:0;">
                     </p>
                 </div>
@@ -186,7 +186,7 @@
                 const CD = calculateCD(CL);
                 const rho = aircraftParams.rho.value;
                 const S = aircraftParams.S.value;
-                return 0.5 * rho * speed * speed * S * CD;
+                return 0.5 * rho * speed * speed * S * CD / 1000;
             }
 
             // Update current state displays
@@ -198,13 +198,13 @@
                 document.getElementById('currentCL').value = currentCL.toFixed(3);
                 document.getElementById('currentCD').value = CD.toFixed(4);
                 document.getElementById('currentSpeed').value = speed.toFixed(1);
-                document.getElementById('currentThrust').value = thrust.toFixed(0);
+                document.getElementById('currentThrust').value = thrust.toFixed(1);
             }
 
             // Visualization setup
             const width = 400;
             const height = 400;
-            const margin = {left: 50, right: 50, top: 50, bottom: 50};
+            const margin = {left: 60, right: 50, top: 50, bottom: 50};
 
             // Drag Polar Plot
             const svgDragPolar = d3.select("#d3-col-drag-polar svg")
@@ -212,8 +212,18 @@
                 .attr("height", height)
                 .style("overflow", "visible");
 
+            // Add clipping path for drag polar
+            svgDragPolar.append("defs")
+                .append("clipPath")
+                .attr("id", "clip-drag-polar")
+                .append("rect")
+                .attr("x", margin.left)
+                .attr("y", margin.top)
+                .attr("width", width - margin.left - margin.right)
+                .attr("height", height - margin.top - margin.bottom);
+
             const xScaleDragPolar = d3.scaleLinear().domain([0, 2]).range([margin.left, width - margin.right]);
-            const yScaleDragPolar = d3.scaleLinear().domain([0, 0.2]).range([height - margin.bottom, margin.top]);
+            const yScaleDragPolar = d3.scaleLinear().domain([0, 0.3]).range([height - margin.bottom, margin.top]);
 
             const xAxisDragPolar = d3.axisBottom().scale(xScaleDragPolar);
             const yAxisDragPolar = d3.axisLeft().scale(yScaleDragPolar);
@@ -229,7 +239,7 @@
                 .call(yAxisDragPolar);
 
             svgDragPolar.append("text")
-                .text("Lift Coefficient, C_L")
+                .text("Lift Coefficient")
                 .attr("class", "axislabel")
                 .attr("transform", "translate(0," + height + ")")
                 .attr("x", width / 2)
@@ -237,10 +247,10 @@
                 .style("text-anchor", "middle");
 
             svgDragPolar.append("text")
-                .text("Drag Coefficient, C_D")
+                .text("Drag Coefficient")
                 .attr("class", "axislabel")
                 .attr("transform", "rotate(-90)")
-                .attr("y", margin.bottom / 2)
+                .attr("y", margin.left / 3)
                 .attr("x", -(height - margin.bottom) / 2)
                 .style("text-anchor", "middle");
 
@@ -250,8 +260,18 @@
                 .attr("height", height)
                 .style("overflow", "visible");
 
+            // Add clipping path for thrust plot
+            svgThrust.append("defs")
+                .append("clipPath")
+                .attr("id", "clip-thrust")
+                .append("rect")
+                .attr("x", margin.left)
+                .attr("y", margin.top)
+                .attr("width", width - margin.left - margin.right)
+                .attr("height", height - margin.top - margin.bottom);
+
             const xScaleThrust = d3.scaleLinear().domain([50, 200]).range([margin.left, width - margin.right]);
-            const yScaleThrust = d3.scaleLinear().domain([0, 100000]).range([height - margin.bottom, margin.top]);
+            const yScaleThrust = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
 
             const xAxisThrust = d3.axisBottom().scale(xScaleThrust);
             const yAxisThrust = d3.axisLeft().scale(yScaleThrust);
@@ -267,7 +287,7 @@
                 .call(yAxisThrust);
 
             svgThrust.append("text")
-                .text("Speed (m/s)")
+                .text("Speed, m/s")
                 .attr("class", "axislabel")
                 .attr("transform", "translate(0," + height + ")")
                 .attr("x", width / 2)
@@ -275,10 +295,10 @@
                 .style("text-anchor", "middle");
 
             svgThrust.append("text")
-                .text("Thrust Required (N)")
+                .text("Thrust Required, kN")
                 .attr("class", "axislabel")
                 .attr("transform", "rotate(-90)")
-                .attr("y", margin.bottom / 2)
+                .attr("y", margin.left / 5)
                 .attr("x", -(height - margin.bottom) / 2)
                 .style("text-anchor", "middle");
 
@@ -286,10 +306,14 @@
             function generateDragPolarData() {
                 const data = [];
                 for (let CL = 0; CL <= 2; CL += 0.01) {
-                    data.push({
-                        CL: CL,
-                        CD: calculateCD(CL)
-                    });
+                    const CD = calculateCD(CL);
+                    // Only include points within the plot bounds
+                    if (CD <= 0.3) {
+                        data.push({
+                            CL: CL,
+                            CD: CD
+                        });
+                    }
                 }
                 return data;
             }
@@ -298,10 +322,14 @@
             function generateThrustData() {
                 const data = [];
                 for (let speed = 50; speed <= 200; speed += 1) {
-                    data.push({
-                        speed: speed,
-                        thrust: calculateThrustRequired(speed, aircraftParams.weight.value)
-                    });
+                    const thrust = calculateThrustRequired(speed, aircraftParams.weight.value);
+                    // Only include points within the plot bounds (now in kN)
+                    if (thrust <= 100) {
+                        data.push({
+                            speed: speed,
+                            thrust: thrust
+                        });
+                    }
                 }
                 return data;
             }
@@ -326,7 +354,8 @@
                     .attr("d", dragPolarLine)
                     .attr("fill", "none")
                     .attr("stroke", "blue")
-                    .attr("stroke-width", 2);
+                    .attr("stroke-width", 2)
+                    .attr("clip-path", "url(#clip-drag-polar)");
 
                 // Update thrust required
                 svgThrust.selectAll(".thrust-line")
@@ -334,7 +363,8 @@
                     .attr("d", thrustLine)
                     .attr("fill", "none")
                     .attr("stroke", "red")
-                    .attr("stroke-width", 2);
+                    .attr("stroke-width", 2)
+                    .attr("clip-path", "url(#clip-thrust)");
 
                 // Update current point on drag polar
                 const currentCD = calculateCD(currentCL);
@@ -364,7 +394,8 @@
                     .attr("d", dragPolarLine)
                     .attr("fill", "none")
                     .attr("stroke", "blue")
-                    .attr("stroke-width", 2);
+                    .attr("stroke-width", 2)
+                    .attr("clip-path", "url(#clip-drag-polar)");
 
                 // Draw thrust required line
                 svgThrust.append("path")
@@ -373,7 +404,8 @@
                     .attr("d", thrustLine)
                     .attr("fill", "none")
                     .attr("stroke", "red")
-                    .attr("stroke-width", 2);
+                    .attr("stroke-width", 2)
+                    .attr("clip-path", "url(#clip-thrust)");
 
                 // Add current point to drag polar
                 svgDragPolar.append("circle")
